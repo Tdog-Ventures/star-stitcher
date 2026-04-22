@@ -90,6 +90,14 @@ describe("Admin sidebar navigation", () => {
     errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
+  // Filter out React Router v6 act() noise — not a real render error.
+  function realErrorCalls() {
+    return errorSpy.mock.calls.filter((args) => {
+      const first = args[0];
+      return !(typeof first === "string" && first.includes("not wrapped in act"));
+    });
+  });
+
   afterEach(() => {
     cleanup();
     localStorage.clear();
