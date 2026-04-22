@@ -109,12 +109,6 @@ describe("Admin sidebar navigation (mobile)", () => {
     expect(screen.queryByRole("link", { name: /^Clients$/i })).toBeNull();
 
     for (const step of NAV_STEPS) {
-      // Wait for any prior sheet to fully unmount + body scroll lock to release.
-      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-      // Radix may leave `pointer-events: none` on body briefly; clear it so the next click registers.
-      document.body.style.pointerEvents = "";
-      document.body.removeAttribute("data-scroll-locked");
-
       // Open the sheet via the SidebarTrigger in the header.
       const trigger = screen.getByRole("button", { name: /toggle sidebar/i });
       await act(async () => {
@@ -130,17 +124,29 @@ describe("Admin sidebar navigation (mobile)", () => {
         await user.click(link);
       });
 
-      // Sheet closes asynchronously and may briefly leave aria-hidden + focus guards
-      // on body, which hides the heading from getByRole. Clean those up, then assert.
+      // The sheet stays open (links don't auto-close it). Dismiss with Escape.
+      await act(async () => {
+        await user.keyboard("{Escape}");
+      });
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+      // Radix may leave aria-hidden + scroll lock on body briefly. Clean up so role queries
+      // can see the new page heading.
+      document.body.style.pointerEvents = "";
+      document.body.removeAttribute("data-scroll-locked");
+      document
+        .querySelectorAll('[data-aria-hidden="true"]')
+        .forEach((n) => n.removeAttribute("aria-hidden"));
+
+      // New page rendered
       await waitFor(() => {
-        document.body.style.pointerEvents = "";
-        document.body.removeAttribute("data-scroll-locked");
-        document
-          .querySelectorAll('[data-aria-hidden="true"]')
-          .forEach((n) => n.removeAttribute("aria-hidden"));
         const headings = Array.from(document.querySelectorAll("h1"));
         expect(headings.some((h) => step.heading.test(h.textContent ?? ""))).toBe(true);
       });
+
+      // Layout chrome intact
+      expect(screen.getAllByText(/ETHINX · Command Center/i).length).toBeGreaterThan(0);
+    }
 
       // Layout chrome intact
       expect(screen.getAllByText(/ETHINX · Command Center/i).length).toBeGreaterThan(0);
