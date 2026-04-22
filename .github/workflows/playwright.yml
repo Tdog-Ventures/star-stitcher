@@ -6,12 +6,19 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: write
+
 jobs:
   e2e:
     timeout-minutes: 30
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Need a real token + full history so we can push baseline commits back.
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -27,7 +34,36 @@ jobs:
       - name: Run unit tests
         run: npm test
 
+      # First-run bootstrap: if no committed baselines exist, generate them,
+      # commit, and push. Subsequent runs skip this and go straight to `e2e`.
+      - name: Check for existing visual baselines
+        id: baselines
+        run: |
+          if [ -d "tests/__screenshots__" ] && [ -n "$(find tests/__screenshots__ -name '*.png' -print -quit)" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Generate baselines (first run only)
+        if: steps.baselines.outputs.exists == 'false' && github.event_name == 'push'
+        run: npm run e2e:update
+
+      - name: Commit baselines (first run only)
+        if: steps.baselines.outputs.exists == 'false' && github.event_name == 'push'
+        run: |
+          if [ -n "$(git status --porcelain tests/__screenshots__)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add tests/__screenshots__
+            git commit -m "test(e2e): bootstrap Playwright visual baselines [skip ci]"
+            git push origin HEAD:${{ github.ref_name }}
+          else
+            echo "No baseline changes to commit."
+          fi
+
       - name: Run Playwright tests
+        if: steps.baselines.outputs.exists == 'true' || github.event_name == 'pull_request'
         run: npm run e2e
 
       - name: Upload Playwright report
