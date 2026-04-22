@@ -142,10 +142,11 @@ describe("Admin sidebar navigation", () => {
         expect(screen.getAllByText(label).length).toBeGreaterThan(0);
       }
 
-      // 3. Clicked sidebar item is visually active
+      // 3. Clicked sidebar item is visually active (exact token match).
       const activeLink = pickSidebarLink(step.link, step.href);
+      const activeTokens = activeLink.className.split(/\s+/);
       for (const cls of ACTIVE_CLASSES) {
-        expect(activeLink.className).toContain(cls);
+        expect(activeTokens).toContain(cls);
       }
 
       // 4. Other sidebar items are NOT active. Match the exact active token to avoid
