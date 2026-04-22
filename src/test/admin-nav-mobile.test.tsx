@@ -148,10 +148,6 @@ describe("Admin sidebar navigation (mobile)", () => {
       expect(screen.getAllByText(/ETHINX · Command Center/i).length).toBeGreaterThan(0);
     }
 
-      // Layout chrome intact
-      expect(screen.getAllByText(/ETHINX · Command Center/i).length).toBeGreaterThan(0);
-    }
-
     expect(realErrorCalls()).toEqual([]);
   });
 });
