@@ -148,11 +148,14 @@ describe("Admin sidebar navigation", () => {
         expect(activeLink.className).toContain(cls);
       }
 
-      // 4. Other sidebar items are NOT active
+      // 4. Other sidebar items are NOT active. Match the exact active token to avoid
+      // collisions with `hover:bg-muted/50` which contains "bg-muted" as substring.
+      const classTokens = (el: HTMLElement) => el.className.split(/\s+/);
       for (const other of NAV_STEPS) {
         if (other.href === step.href) continue;
         const otherLink = pickSidebarLink(other.link, other.href);
-        expect(otherLink.className).not.toContain("bg-muted");
+        expect(classTokens(otherLink)).not.toContain("bg-muted");
+        expect(classTokens(otherLink)).not.toContain("text-primary");
       }
 
       // 5. No catastrophic scroll-state leak: jsdom doesn't auto-reset, but our app must not
