@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { ThemeProvider } from "@/providers/ThemeProvider";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { ScrollToTop } from "@/components/ScrollToTop";
 
 import { PublicLayout } from "@/components/layouts/PublicLayout";
 import { DashboardLayout } from "@/components/layouts/DashboardLayout";
@@ -57,6 +58,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <ScrollToTop />
             <Routes>
               {/* Public routes (with public navbar) */}
               <Route element={<PublicLayout />}>
