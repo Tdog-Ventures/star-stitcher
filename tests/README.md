@@ -29,12 +29,14 @@ npm run e2e:report          # open last HTML report
 
 ## Baselines
 
-Screenshots live at `tests/__screenshots__/<project>/admin.visual.spec.ts/<slug>.png` and are namespaced per project (so Linux CI shots don't collide with macOS local shots). Always (re)generate baselines on the same OS as CI:
+Screenshots live at `tests/__screenshots__/<project>/admin.visual.spec.ts/<slug>.png` and are namespaced per project (so Linux CI shots don't collide with macOS local shots).
+
+**You don't need to generate baselines manually.** On the first push to `main`, the GitHub Actions workflow detects that `tests/__screenshots__/` is empty, runs `npm run e2e:update`, commits the generated PNGs back to the branch with `[skip ci]`, and exits. Every subsequent run executes `npm run e2e` against those committed baselines.
+
+To regenerate baselines later (e.g., after an intentional UI change), delete the affected files in `tests/__screenshots__/` and push — CI will repopulate them. Or run locally:
 
 ```bash
-# In CI image (or via Docker):
-npx playwright test --update-snapshots --project=desktop-chromium
-git add tests/__screenshots__
+npm run e2e:update
 ```
 
 ## Stability levers
