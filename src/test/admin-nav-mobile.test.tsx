@@ -105,6 +105,12 @@ describe("Admin sidebar navigation (mobile)", () => {
     expect(screen.queryByRole("link", { name: /^Clients$/i })).toBeNull();
 
     for (const step of NAV_STEPS) {
+      // Wait for any prior sheet to fully unmount + body scroll lock to release.
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      // Radix may leave `pointer-events: none` on body briefly; clear it so the next click registers.
+      document.body.style.pointerEvents = "";
+      document.body.removeAttribute("data-scroll-locked");
+
       // Open the sheet via the SidebarTrigger in the header.
       const trigger = screen.getByRole("button", { name: /toggle sidebar/i });
       await act(async () => {
