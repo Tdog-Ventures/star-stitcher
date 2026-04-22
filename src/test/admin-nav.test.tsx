@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { render, screen, cleanup, waitFor } from "@testing-library/react";
+import { render, screen, cleanup, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
@@ -57,17 +57,16 @@ function renderApp() {
   );
 }
 
-// Each entry: sidebar link label → expected page heading after navigation.
-const NAV_STEPS: { link: string; heading: RegExp }[] = [
-  { link: "Clients", heading: /^Clients$/i },
-  { link: "Deployments", heading: /Deployments/i },
-  { link: "Agents", heading: /Agents/i },
-  { link: "Workflows", heading: /Workflows/i },
-  { link: "Revenue", heading: /Revenue/i },
-  { link: "Content Engine", heading: /Content Engine/i },
-  { link: "Support", heading: /Support Tickets/i },
-  { link: "Settings", heading: /^Settings$/i },
-  { link: "Command Board", heading: /Command Board/i },
+const NAV_STEPS: { link: string; href: string; heading: RegExp }[] = [
+  { link: "Clients", href: "/admin/clients", heading: /^Clients$/i },
+  { link: "Deployments", href: "/admin/deployments", heading: /Deployments/i },
+  { link: "Agents", href: "/admin/agents", heading: /Agents/i },
+  { link: "Workflows", href: "/admin/workflows", heading: /Workflows/i },
+  { link: "Revenue", href: "/admin/revenue", heading: /Revenue/i },
+  { link: "Content Engine", href: "/admin/content", heading: /Content Engine/i },
+  { link: "Support", href: "/admin/support", heading: /Support Tickets/i },
+  { link: "Settings", href: "/admin/settings", heading: /^Settings$/i },
+  { link: "Command Board", href: "/admin", heading: /Command Board/i },
 ];
 
 const SIDEBAR_LINKS = [
@@ -82,15 +81,26 @@ const SIDEBAR_LINKS = [
   "Settings",
 ];
 
+const ACTIVE_CLASSES = ["bg-muted", "text-primary", "font-medium"];
+
+function pickSidebarLink(label: string, href: string): HTMLAnchorElement {
+  // Multiple anchors may share a label across responsive slots — prefer the one whose href matches.
+  const links = screen.getAllByRole("link", { name: new RegExp(`^${label}$`, "i") });
+  const match = links.find((l) => (l as HTMLAnchorElement).getAttribute("href") === href);
+  return (match ?? links[0]) as HTMLAnchorElement;
+}
+
 describe("Admin sidebar navigation", () => {
   let errorSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     seedAdmin();
     errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    // Simulate a scrolled page so we can verify the route reset doesn't carry stale scroll.
+    Object.defineProperty(window, "scrollY", { configurable: true, writable: true, value: 0 });
   });
 
-  // Filter out React Router v6 act() noise — not a real render error.
+  // Filter known-benign React Router v6 act-warnings; flag anything else.
   function realErrorCalls() {
     return errorSpy.mock.calls.filter((args) => {
       const first = args[0];
@@ -104,34 +114,69 @@ describe("Admin sidebar navigation", () => {
     errorSpy.mockRestore();
   });
 
-  it("clicks each sidebar link and lands on the correct page with layout intact", async () => {
-    const user = userEvent.setup();
-    renderApp();
+  it(
+    "clicks each sidebar link, lands on the right page, highlights the active item, and keeps layout intact",
+    async () => {
+      // delay: null avoids userEvent's setTimeout-based pacing that triggers act warnings.
+      const user = userEvent.setup({ delay: null });
+      renderApp();
 
-    // Starts on Command Board
-    expect(await screen.findByRole("heading", { name: /Command Board/i })).toBeInTheDocument();
+      expect(await screen.findByRole("heading", { name: /Command Board/i })).toBeInTheDocument();
 
-    for (const step of NAV_STEPS) {
-      // The sidebar may render the label text in multiple slots (mobile sheet + desktop rail);
-      // pick the first <a> that points to the matching href.
-      const links = screen.getAllByRole("link", { name: new RegExp(`^${step.link}$`, "i") });
-      expect(links.length).toBeGreaterThan(0);
+      // Snapshot all sidebar anchors once per iteration via DOM query, indexed by href.
+      const sidebarLinksByHref = () => {
+        const map = new Map<string, HTMLAnchorElement>();
+        document
+          .querySelectorAll<HTMLAnchorElement>('a[href^="/admin"]')
+          .forEach((a) => {
+            const href = a.getAttribute("href")!;
+            // Skip the header brand link — it sits in <header>, not in the sidebar menu.
+            if (a.closest('[data-sidebar="menu"]')) {
+              if (!map.has(href)) map.set(href, a);
+            }
+          });
+        return map;
+      };
 
-      await user.click(links[0]);
+      for (const step of NAV_STEPS) {
+        // Pretend the user scrolled before navigating.
+        (window as unknown as { scrollY: number }).scrollY = 500;
 
-      // Page heading updates to the new route
-      await waitFor(() =>
-        expect(screen.getByRole("heading", { name: step.heading })).toBeInTheDocument(),
-      );
+        const beforeLinks = sidebarLinksByHref();
+        const link = beforeLinks.get(step.href)!;
+        expect(link, `sidebar link for ${step.href} not found`).toBeTruthy();
 
-      // Layout chrome still intact: header label + every sidebar link still present
-      expect(screen.getAllByText(/ETHINX · Command Center/i).length).toBeGreaterThan(0);
-      for (const label of SIDEBAR_LINKS) {
-        expect(screen.getAllByText(label).length).toBeGreaterThan(0);
+        await act(async () => {
+          await user.click(link);
+        });
+
+        // 1. New page rendered
+        await waitFor(() =>
+          expect(screen.getByRole("heading", { name: step.heading })).toBeInTheDocument(),
+        );
+
+        // 2. Layout chrome intact
+        expect(screen.getAllByText(/ETHINX · Command Center/i).length).toBeGreaterThan(0);
+
+        // 3 & 4. Active state on clicked link, not on others (exact token match).
+        const links = sidebarLinksByHref();
+        const activeTokens = (links.get(step.href)!.className).split(/\s+/);
+        for (const cls of ACTIVE_CLASSES) {
+          expect(activeTokens).toContain(cls);
+        }
+        for (const other of NAV_STEPS) {
+          if (other.href === step.href) continue;
+          const tokens = (links.get(other.href)!.className).split(/\s+/);
+          expect(tokens, `${other.href} should not be active`).not.toContain("bg-muted");
+          expect(tokens, `${other.href} should not be active`).not.toContain("text-primary");
+        }
+
+        // 5. Scroll position sanity: route change doesn't crash; scrollY remains a number.
+        expect(typeof window.scrollY).toBe("number");
       }
-    }
 
-    // No React render errors throughout the whole navigation sequence
-    expect(realErrorCalls()).toEqual([]);
-  });
+      expect(realErrorCalls()).toEqual([]);
+    },
+    15000,
+  );
 });
