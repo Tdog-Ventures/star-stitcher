@@ -180,9 +180,3 @@ describe("Admin sidebar navigation", () => {
     15000,
   );
 });
-      expect(typeof window.scrollY).toBe("number");
-    }
-
-    expect(realErrorCalls()).toEqual([]);
-  });
-});
