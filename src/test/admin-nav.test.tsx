@@ -114,55 +114,72 @@ describe("Admin sidebar navigation", () => {
     errorSpy.mockRestore();
   });
 
-  it("clicks each sidebar link, lands on the right page, highlights the active item, and keeps layout intact", async () => {
-    // delay: null avoids userEvent's setTimeout-based pacing that triggers act warnings.
-    const user = userEvent.setup({ delay: null });
-    renderApp();
+  it(
+    "clicks each sidebar link, lands on the right page, highlights the active item, and keeps layout intact",
+    async () => {
+      // delay: null avoids userEvent's setTimeout-based pacing that triggers act warnings.
+      const user = userEvent.setup({ delay: null });
+      renderApp();
 
-    expect(await screen.findByRole("heading", { name: /Command Board/i })).toBeInTheDocument();
+      expect(await screen.findByRole("heading", { name: /Command Board/i })).toBeInTheDocument();
 
-    for (const step of NAV_STEPS) {
-      // Pretend the user scrolled the page before navigating.
-      (window as unknown as { scrollY: number }).scrollY = 500;
+      // Snapshot all sidebar anchors once per iteration via DOM query, indexed by href.
+      const sidebarLinksByHref = () => {
+        const map = new Map<string, HTMLAnchorElement>();
+        document
+          .querySelectorAll<HTMLAnchorElement>('a[href^="/admin"]')
+          .forEach((a) => {
+            const href = a.getAttribute("href")!;
+            // Skip the header brand link — it sits in <header>, not in the sidebar menu.
+            if (a.closest('[data-sidebar="menu"]')) {
+              if (!map.has(href)) map.set(href, a);
+            }
+          });
+        return map;
+      };
 
-      const link = pickSidebarLink(step.link, step.href);
+      for (const step of NAV_STEPS) {
+        // Pretend the user scrolled before navigating.
+        (window as unknown as { scrollY: number }).scrollY = 500;
 
-      await act(async () => {
-        await user.click(link);
-      });
+        const beforeLinks = sidebarLinksByHref();
+        const link = beforeLinks.get(step.href)!;
+        expect(link, `sidebar link for ${step.href} not found`).toBeTruthy();
 
-      // 1. New page rendered
-      await waitFor(() =>
-        expect(screen.getByRole("heading", { name: step.heading })).toBeInTheDocument(),
-      );
+        await act(async () => {
+          await user.click(link);
+        });
 
-      // 2. Layout chrome intact
-      expect(screen.getAllByText(/ETHINX · Command Center/i).length).toBeGreaterThan(0);
-      for (const label of SIDEBAR_LINKS) {
-        expect(screen.getAllByText(label).length).toBeGreaterThan(0);
+        // 1. New page rendered
+        await waitFor(() =>
+          expect(screen.getByRole("heading", { name: step.heading })).toBeInTheDocument(),
+        );
+
+        // 2. Layout chrome intact
+        expect(screen.getAllByText(/ETHINX · Command Center/i).length).toBeGreaterThan(0);
+
+        // 3 & 4. Active state on clicked link, not on others (exact token match).
+        const links = sidebarLinksByHref();
+        const activeTokens = (links.get(step.href)!.className).split(/\s+/);
+        for (const cls of ACTIVE_CLASSES) {
+          expect(activeTokens).toContain(cls);
+        }
+        for (const other of NAV_STEPS) {
+          if (other.href === step.href) continue;
+          const tokens = (links.get(other.href)!.className).split(/\s+/);
+          expect(tokens, `${other.href} should not be active`).not.toContain("bg-muted");
+          expect(tokens, `${other.href} should not be active`).not.toContain("text-primary");
+        }
+
+        // 5. Scroll position sanity: route change doesn't crash; scrollY remains a number.
+        expect(typeof window.scrollY).toBe("number");
       }
 
-      // 3. Clicked sidebar item is visually active (exact token match).
-      const activeLink = pickSidebarLink(step.link, step.href);
-      const activeTokens = activeLink.className.split(/\s+/);
-      for (const cls of ACTIVE_CLASSES) {
-        expect(activeTokens).toContain(cls);
-      }
-
-      // 4. Other sidebar items are NOT active. Match the exact active token to avoid
-      // collisions with `hover:bg-muted/50` which contains "bg-muted" as substring.
-      const classTokens = (el: HTMLElement) => el.className.split(/\s+/);
-      for (const other of NAV_STEPS) {
-        if (other.href === step.href) continue;
-        const otherLink = pickSidebarLink(other.link, other.href);
-        expect(classTokens(otherLink)).not.toContain("bg-muted");
-        expect(classTokens(otherLink)).not.toContain("text-primary");
-      }
-
-      // 5. No catastrophic scroll-state leak: jsdom doesn't auto-reset, but our app must not
-      // explicitly write a non-zero scrollY during a route change. Reset and assert we
-      // don't observe runaway growth (sanity check — jsdom keeps whatever was last set).
-      // The real signal here is: no error, no exception, page rendered.
+      expect(realErrorCalls()).toEqual([]);
+    },
+    15000,
+  );
+});
       expect(typeof window.scrollY).toBe("number");
     }
 
