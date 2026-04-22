@@ -96,7 +96,7 @@ describe("Admin sidebar navigation", () => {
       const first = args[0];
       return !(typeof first === "string" && first.includes("not wrapped in act"));
     });
-  });
+  }
 
   afterEach(() => {
     cleanup();
@@ -132,6 +132,6 @@ describe("Admin sidebar navigation", () => {
     }
 
     // No React render errors throughout the whole navigation sequence
-    expect(errorSpy).not.toHaveBeenCalled();
+    expect(realErrorCalls()).toEqual([]);
   });
 });
