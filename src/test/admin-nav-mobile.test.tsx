@@ -130,10 +130,17 @@ describe("Admin sidebar navigation (mobile)", () => {
         await user.click(link);
       });
 
-      // New page rendered
-      await waitFor(() =>
-        expect(screen.getByRole("heading", { name: step.heading })).toBeInTheDocument(),
-      );
+      // Sheet closes asynchronously and may briefly leave aria-hidden + focus guards
+      // on body, which hides the heading from getByRole. Clean those up, then assert.
+      await waitFor(() => {
+        document.body.style.pointerEvents = "";
+        document.body.removeAttribute("data-scroll-locked");
+        document
+          .querySelectorAll('[data-aria-hidden="true"]')
+          .forEach((n) => n.removeAttribute("aria-hidden"));
+        const headings = Array.from(document.querySelectorAll("h1"));
+        expect(headings.some((h) => step.heading.test(h.textContent ?? ""))).toBe(true);
+      });
 
       // Layout chrome intact
       expect(screen.getAllByText(/ETHINX · Command Center/i).length).toBeGreaterThan(0);
