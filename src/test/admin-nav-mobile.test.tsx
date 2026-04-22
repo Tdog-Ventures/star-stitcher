@@ -85,7 +85,11 @@ describe("Admin sidebar navigation (mobile)", () => {
   function realErrorCalls() {
     return errorSpy.mock.calls.filter((args) => {
       const first = args[0];
-      return !(typeof first === "string" && first.includes("not wrapped in act"));
+      if (typeof first !== "string") return true;
+      // React Router v6 act-warnings (benign) and Radix DialogContent description warning (cosmetic a11y note).
+      if (first.includes("not wrapped in act")) return false;
+      if (first.includes("Missing `Description`")) return false;
+      return true;
     });
   }
 
