@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
+  BarChart3,
   CheckCircle2,
   FileText,
   Layers,
+  Plus,
   RotateCcw,
   Send,
   Sparkles,
@@ -12,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EngineLayout } from "@/components/engine";
+import { StatusBadge, type EngineStatus } from "@/components/engine/StatusBadge";
 import { OnboardingChecklist } from "@/components/engine/OnboardingChecklist";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/providers/AuthProvider";
