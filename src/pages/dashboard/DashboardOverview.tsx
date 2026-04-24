@@ -5,14 +5,25 @@ import {
   CheckCircle2,
   FileText,
   Layers,
+  RotateCcw,
   Send,
   Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EngineLayout } from "@/components/engine";
+import { OnboardingChecklist } from "@/components/engine/OnboardingChecklist";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/providers/AuthProvider";
+import {
+  computeOnboardingState,
+  dismissOnboarding,
+  hasExportedCsv,
+  isOnboardingDismissed,
+  onboardingProgress,
+  restoreOnboarding,
+  type OnboardingSignals,
+} from "@/lib/onboarding";
 
 const SHORTCUTS = [
   {
@@ -45,14 +56,27 @@ interface Stats {
 const DashboardOverview = () => {
   const { user } = useAuth();
   const [stats, setStats] = useState<Stats>({ offers: 0, assets: 0, scheduled: 0, completed: 0 });
+  const [signals, setSignals] = useState<OnboardingSignals>({
+    offers: 0,
+    assets: 0,
+    tasks: 0,
+    hasCompletedWithPerformance: false,
+    hasAnyPerformance: false,
+    csvExported: false,
+  });
   const [loading, setLoading] = useState(true);
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    setDismissed(isOnboardingDismissed(user?.id));
+  }, [user?.id]);
 
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
     const load = async () => {
       setLoading(true);
-      const [offers, assets, scheduled, completed] = await Promise.all([
+      const [offers, assets, scheduled, completed, tasksAll] = await Promise.all([
         supabase.from("offers").select("id", { count: "exact", head: true }),
         supabase.from("assets").select("id", { count: "exact", head: true }),
         supabase
@@ -63,13 +87,40 @@ const DashboardOverview = () => {
           .from("distribution_tasks")
           .select("id", { count: "exact", head: true })
           .eq("status", "completed"),
+        supabase
+          .from("distribution_tasks")
+          .select("status, impressions, clicks, conversions, revenue_cents"),
       ]);
       if (cancelled) return;
+
+      const taskRows = (tasksAll.data ?? []) as Array<{
+        status: string;
+        impressions: number | null;
+        clicks: number | null;
+        conversions: number | null;
+        revenue_cents: number | null;
+      }>;
+      const hasPerf = (t: (typeof taskRows)[number]) =>
+        (t.impressions ?? 0) > 0 ||
+        (t.clicks ?? 0) > 0 ||
+        (t.conversions ?? 0) > 0 ||
+        (t.revenue_cents ?? 0) > 0;
+
       setStats({
         offers: offers.count ?? 0,
         assets: assets.count ?? 0,
         scheduled: scheduled.count ?? 0,
         completed: completed.count ?? 0,
+      });
+      setSignals({
+        offers: offers.count ?? 0,
+        assets: assets.count ?? 0,
+        tasks: taskRows.length,
+        hasCompletedWithPerformance: taskRows.some(
+          (t) => t.status === "completed" && hasPerf(t),
+        ),
+        hasAnyPerformance: taskRows.some(hasPerf),
+        csvExported: hasExportedCsv(user.id),
       });
       setLoading(false);
     };
@@ -78,6 +129,11 @@ const DashboardOverview = () => {
       cancelled = true;
     };
   }, [user?.id]);
+
+  const onboardingState = computeOnboardingState(signals);
+  const { done, total } = onboardingProgress(onboardingState);
+  const showChecklist = !dismissed && !loading;
+  const isFreshAccount = !loading && stats.offers === 0;
 
   const cards = [
     { label: "Offers created", value: stats.offers, hint: "All-time", icon: FileText },
@@ -96,14 +152,48 @@ const DashboardOverview = () => {
       title="Dashboard"
       description="One source of truth for your offers, assets, and distribution. Manual-first — AI just speeds you up."
       actions={
-        <Button asChild>
-          <Link to="/engines">
-            New offer
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Link>
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {dismissed ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                restoreOnboarding(user?.id);
+                setDismissed(false);
+              }}
+            >
+              <RotateCcw className="mr-2 h-4 w-4" />
+              Show onboarding
+            </Button>
+          ) : null}
+          {isFreshAccount ? (
+            <Button asChild>
+              <Link to="/engines/offer">
+                Start here
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          ) : (
+            <Button asChild>
+              <Link to="/engines">
+                New offer
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          )}
+        </div>
       }
     >
+      {showChecklist ? (
+        <OnboardingChecklist
+          state={onboardingState}
+          onDismiss={() => {
+            dismissOnboarding(user?.id);
+            setDismissed(true);
+          }}
+        />
+      ) : null}
+
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map(({ label, value, hint, icon: Icon }) => (
           <Card key={label}>
@@ -137,14 +227,36 @@ const DashboardOverview = () => {
         ))}
       </section>
 
-      {!loading && stats.offers === 0 ? (
+      {isFreshAccount ? (
         <section className="rounded-lg border border-dashed border-border bg-card p-8 text-center">
           <FileText className="mx-auto h-6 w-6 text-muted-foreground" />
           <p className="mt-3 text-sm font-medium text-foreground">Nothing here yet</p>
           <p className="mt-1 text-sm text-muted-foreground">
             Create your first offer to populate this dashboard.
           </p>
+          <Button asChild size="sm" className="mt-4">
+            <Link to="/engines/offer">
+              Start here
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
+          </Button>
         </section>
+      ) : null}
+
+      {!showChecklist && !loading && done < total ? (
+        <p className="text-xs text-muted-foreground">
+          Onboarding hidden ·{" "}
+          <button
+            type="button"
+            className="underline underline-offset-2 hover:text-foreground"
+            onClick={() => {
+              restoreOnboarding(user?.id);
+              setDismissed(false);
+            }}
+          >
+            show again
+          </button>
+        </p>
       ) : null}
     </EngineLayout>
   );
