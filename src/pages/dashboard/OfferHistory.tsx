@@ -154,6 +154,87 @@ const OfferHistory = () => {
   const selectedAssets = selected ? assetsByOffer.get(selected.id) ?? [] : [];
   const selectedTasks = selected ? tasksForOffer(selected.id) : [];
 
+  // Build PerfTask list with linked_offer_id resolved through asset → offer
+  const perfTasks = useMemo<PerfTask[]>(() => {
+    const assetToOffer = new Map<string, string>();
+    for (const a of assets) {
+      if (a.source_record_id) assetToOffer.set(a.id, a.source_record_id);
+    }
+    return tasks.map((t) => ({
+      id: t.id,
+      channel: t.channel,
+      status: t.status,
+      impressions: t.impressions ?? 0,
+      clicks: t.clicks ?? 0,
+      conversions: t.conversions ?? 0,
+      revenue_cents: t.revenue_cents ?? 0,
+      campaign_name: t.campaign_name,
+      task_title: t.task_title,
+      scheduled_at: t.scheduled_at,
+      linked_offer_id:
+        t.linked_offer_id ?? (t.asset_id ? assetToOffer.get(t.asset_id) ?? null : null),
+    }));
+  }, [tasks, assets]);
+
+  const offerTitleFor = (id: string) =>
+    offers.find((o) => o.id === id)?.title ?? "Unknown offer";
+
+  const offerComparison = useMemo(
+    () => rankByOffer(perfTasks).slice(0, 5),
+    [perfTasks],
+  );
+  const campaignComparison = useMemo(
+    () => rankByCampaign(perfTasks).slice(0, 5),
+    [perfTasks],
+  );
+  const showComparison = hasPerformanceData(perfTasks);
+
+  const handleExport = () => {
+    const headers = [
+      "offer_id",
+      "offer_title",
+      "asset_count",
+      "task_count",
+      "impressions",
+      "clicks",
+      "conversions",
+      "revenue_cents",
+    ];
+    const lines = [headers.join(",")];
+    const esc = (v: unknown) => {
+      const s = v === null || v === undefined ? "" : String(v);
+      return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    for (const o of offers) {
+      const linkedTasks = tasksForOffer(o.id);
+      const totals = linkedTasks.reduce(
+        (acc, t) => ({
+          impressions: acc.impressions + (t.impressions ?? 0),
+          clicks: acc.clicks + (t.clicks ?? 0),
+          conversions: acc.conversions + (t.conversions ?? 0),
+          revenue_cents: acc.revenue_cents + (t.revenue_cents ?? 0),
+        }),
+        { impressions: 0, clicks: 0, conversions: 0, revenue_cents: 0 },
+      );
+      lines.push(
+        [
+          o.id,
+          o.title,
+          (assetsByOffer.get(o.id) ?? []).length,
+          linkedTasks.length,
+          totals.impressions,
+          totals.clicks,
+          totals.conversions,
+          totals.revenue_cents,
+        ]
+          .map(esc)
+          .join(","),
+      );
+    }
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    downloadCsv(`offer-history-${stamp}.csv`, lines.join("\n"));
+  };
+
   return (
     <EngineLayout
       title="Offer History"
