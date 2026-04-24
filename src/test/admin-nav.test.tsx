@@ -9,6 +9,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AdminLayout } from "@/components/layouts/AdminLayout";
 
 import CommandBoard from "@/pages/admin/CommandBoard";
+import AdminPerformance from "@/pages/admin/AdminPerformance";
 import Clients from "@/pages/admin/Clients";
 import Deployments from "@/pages/admin/Deployments";
 import Agents from "@/pages/admin/Agents";
