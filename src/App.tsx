@@ -32,6 +32,7 @@ import Engines from "./pages/dashboard/Engines";
 import OfferEngine from "./pages/dashboard/OfferEngine";
 import Assets from "./pages/dashboard/Assets";
 import Distribution from "./pages/dashboard/Distribution";
+import DistributionCalendar from "./pages/dashboard/DistributionCalendar";
 import Settings from "./pages/dashboard/Settings";
 
 // Admin (Command Center — preserved from the stitch)
@@ -87,6 +88,7 @@ const App = () => (
                 <Route path="/engines/offer" element={<OfferEngine />} />
                 <Route path="/assets" element={<Assets />} />
                 <Route path="/distribution" element={<Distribution />} />
+                <Route path="/distribution/calendar" element={<DistributionCalendar />} />
                 <Route path="/settings" element={<Settings />} />
               </Route>
 
