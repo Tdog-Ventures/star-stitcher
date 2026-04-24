@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, FileText, Layers, Send } from "lucide-react";
+import { ArrowLeft, BarChart3, Download, FileText, Layers, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Sheet,
   SheetContent,
@@ -10,11 +11,28 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/providers/AuthProvider";
 import { EngineLayout } from "@/components/engine";
 import { StatusBadge, type EngineStatus } from "@/components/engine/StatusBadge";
+import {
+  downloadCsv,
+  formatCents,
+  formatPct,
+  hasPerformanceData,
+  rankByCampaign,
+  rankByOffer,
+  type PerfTask,
+} from "@/lib/performance";
 
 interface OfferRow {
   id: string;
