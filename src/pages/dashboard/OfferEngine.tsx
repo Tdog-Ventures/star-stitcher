@@ -111,29 +111,46 @@ const OfferEngine = () => {
 
     await trackEvent("offer_saved", { offer_id: offer.id });
 
-    const { error: assetErr } = await supabase.from("assets").insert({
-      user_id: user.id,
-      engine_key: "offer",
-      source_record_id: offer.id,
-      title: offer.title,
-      content: [
-        offer.product_name && `Product: ${offer.product_name}`,
-        offer.desired_outcome && `Outcome: ${offer.desired_outcome}`,
-        offer.cta && `CTA: ${offer.cta}`,
-      ].filter(Boolean).join("\n"),
-      status: "draft",
-    });
+    const { data: asset, error: assetErr } = await supabase
+      .from("assets")
+      .insert({
+        user_id: user.id,
+        engine_key: "offer",
+        source_record_id: offer.id,
+        title: offer.title,
+        content: [
+          offer.product_name && `Product: ${offer.product_name}`,
+          offer.desired_outcome && `Outcome: ${offer.desired_outcome}`,
+          offer.cta && `CTA: ${offer.cta}`,
+        ].filter(Boolean).join("\n"),
+        status: "draft",
+      })
+      .select()
+      .single();
 
     setSaving(false);
-    if (assetErr) {
-      toast({ title: "Offer saved, asset failed", description: assetErr.message, variant: "destructive" });
+    if (assetErr || !asset) {
+      toast({ title: "Offer saved, asset failed", description: assetErr?.message, variant: "destructive" });
       return;
     }
 
     await trackEvent("asset_created", { source: "offer", offer_id: offer.id });
     toast({ title: "Saved", description: "Offer and asset created." });
+    setSavedAssetId(asset.id);
+  };
+
+  const loadSample = () => {
+    setFields(SAMPLE_OFFER);
+    setSavedAssetId(null);
+    toast({
+      title: "Sample loaded",
+      description: "Edit anything you want, then click Save as asset.",
+    });
+  };
+
+  const startNew = () => {
     setFields(EMPTY);
-    navigate("/assets");
+    setSavedAssetId(null);
   };
 
 
@@ -143,6 +160,10 @@ const OfferEngine = () => {
       description="Fill the structure manually. Every field is optional except title, product name, and CTA. Edit until it's right, then save as a reusable asset."
       actions={
         <>
+          <Button variant="outline" size="sm" onClick={loadSample}>
+            <Wand2 className="mr-2 h-4 w-4" />
+            Load sample offer
+          </Button>
           <Button variant="outline" size="sm" disabled>
             <Sparkles className="mr-2 h-4 w-4" />
             AI assist (soon)
