@@ -161,6 +161,9 @@ const DashboardOverview = () => {
         scheduled: scheduled.count ?? 0,
         completed: completed.count ?? 0,
       });
+      setRecentOffers((recentOffersRes.data ?? []) as RecentOffer[]);
+      setRecentAssets((recentAssetsRes.data ?? []) as RecentAsset[]);
+      setRecentTasks((recentTasksRes.data ?? []) as RecentTask[]);
       setSignals({
         offers: offers.count ?? 0,
         assets: assets.count ?? 0,
