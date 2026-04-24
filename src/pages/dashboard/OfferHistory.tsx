@@ -33,6 +33,7 @@ import {
   rankByOffer,
   type PerfTask,
 } from "@/lib/performance";
+import { markCsvExported } from "@/lib/onboarding";
 
 interface OfferRow {
   id: string;
