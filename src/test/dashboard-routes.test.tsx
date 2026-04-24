@@ -14,13 +14,8 @@ import Assets from "@/pages/dashboard/Assets";
 import Distribution from "@/pages/dashboard/Distribution";
 import Settings from "@/pages/dashboard/Settings";
 
-const STORAGE_KEY = "ethinx.auth.stub";
-
 function seedMember() {
-  localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify({ id: "stub-member", email: "member@ethinx.dev", role: "member" }),
-  );
+  globalThis.__TEST_AUTH__ = { id: "stub-member", email: "member@ethinx.dev", role: "member" };
 }
 
 function renderAt(path: string) {
@@ -77,7 +72,7 @@ describe("Member workspace routes", () => {
 
   afterEach(() => {
     cleanup();
-    localStorage.clear();
+    globalThis.__TEST_AUTH__ = null;
     errorSpy.mockRestore();
   });
 
