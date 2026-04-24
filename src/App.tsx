@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -13,44 +14,59 @@ import { PublicLayout } from "@/components/layouts/PublicLayout";
 import { DashboardLayout } from "@/components/layouts/DashboardLayout";
 import { AdminLayout } from "@/components/layouts/AdminLayout";
 
-// Public (marketing/showcase layer — preserved from the stitch)
+// Public pages — kept eager because they are the marketing entry points
 import Index from "./pages/Index";
-import Showcase from "./pages/public/Showcase";
-import Partners from "./pages/public/Partners";
-import VideoVelocity from "./pages/public/VideoVelocity";
-import Onboarding from "./pages/public/Onboarding";
-
-// Auth
-import Login from "./pages/auth/Login";
-import Signup from "./pages/auth/Signup";
-import ForgotPassword from "./pages/auth/ForgotPassword";
-import ResetPassword from "./pages/auth/ResetPassword";
-
-// Member workspace — Offer + Distribution Engine
-import DashboardOverview from "./pages/dashboard/DashboardOverview";
-import Engines from "./pages/dashboard/Engines";
-import OfferEngine from "./pages/dashboard/OfferEngine";
-import OfferHistory from "./pages/dashboard/OfferHistory";
-import Assets from "./pages/dashboard/Assets";
-import Distribution from "./pages/dashboard/Distribution";
-import DistributionCalendar from "./pages/dashboard/DistributionCalendar";
-import Settings from "./pages/dashboard/Settings";
-
-// Admin (Command Center — preserved from the stitch)
-import CommandBoard from "./pages/admin/CommandBoard";
-import AdminPerformance from "./pages/admin/AdminPerformance";
-import Clients from "./pages/admin/Clients";
-import Deployments from "./pages/admin/Deployments";
-import Agents from "./pages/admin/Agents";
-import Workflows from "./pages/admin/Workflows";
-import Revenue from "./pages/admin/Revenue";
-import Content from "./pages/admin/Content";
-import AdminSupport from "./pages/admin/AdminSupport";
-import AdminSettings from "./pages/admin/AdminSettings";
-
 import NotFound from "./pages/NotFound";
 
+// Public (marketing/showcase layer) — lazy
+const Showcase = lazy(() => import("./pages/public/Showcase"));
+const Partners = lazy(() => import("./pages/public/Partners"));
+const VideoVelocity = lazy(() => import("./pages/public/VideoVelocity"));
+const Onboarding = lazy(() => import("./pages/public/Onboarding"));
+
+// Auth — lazy
+const Login = lazy(() => import("./pages/auth/Login"));
+const Signup = lazy(() => import("./pages/auth/Signup"));
+const ForgotPassword = lazy(() => import("./pages/auth/ForgotPassword"));
+const ResetPassword = lazy(() => import("./pages/auth/ResetPassword"));
+
+// Member workspace — lazy (heavy: distribution calendar, offer history)
+const DashboardOverview = lazy(() => import("./pages/dashboard/DashboardOverview"));
+const Engines = lazy(() => import("./pages/dashboard/Engines"));
+const OfferEngine = lazy(() => import("./pages/dashboard/OfferEngine"));
+const OfferHistory = lazy(() => import("./pages/dashboard/OfferHistory"));
+const Assets = lazy(() => import("./pages/dashboard/Assets"));
+const Distribution = lazy(() => import("./pages/dashboard/Distribution"));
+const DistributionCalendar = lazy(() => import("./pages/dashboard/DistributionCalendar"));
+const Settings = lazy(() => import("./pages/dashboard/Settings"));
+
+// Admin (Command Center) — lazy (heavy: performance board, command board)
+const CommandBoard = lazy(() => import("./pages/admin/CommandBoard"));
+const AdminPerformance = lazy(() => import("./pages/admin/AdminPerformance"));
+const Clients = lazy(() => import("./pages/admin/Clients"));
+const Deployments = lazy(() => import("./pages/admin/Deployments"));
+const Agents = lazy(() => import("./pages/admin/Agents"));
+const Workflows = lazy(() => import("./pages/admin/Workflows"));
+const Revenue = lazy(() => import("./pages/admin/Revenue"));
+const Content = lazy(() => import("./pages/admin/Content"));
+const AdminSupport = lazy(() => import("./pages/admin/AdminSupport"));
+const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
+
 const queryClient = new QueryClient();
+
+function RouteFallback() {
+  return (
+    <div className="flex min-h-[40vh] items-center justify-center">
+      <div className="flex items-center gap-3 text-sm text-muted-foreground">
+        <div
+          className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-foreground"
+          aria-hidden="true"
+        />
+        <span>Loading…</span>
+      </div>
+    </div>
+  );
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -61,63 +77,65 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <ScrollToTop />
-            <Routes>
-              {/* Public routes (with public navbar) */}
-              <Route element={<PublicLayout />}>
-                <Route path="/" element={<Index />} />
-                <Route path="/showcase" element={<Showcase />} />
-                <Route path="/partners" element={<Partners />} />
-                <Route path="/video-velocity" element={<VideoVelocity />} />
-                <Route path="/onboarding" element={<Onboarding />} />
-              </Route>
+            <Suspense fallback={<RouteFallback />}>
+              <Routes>
+                {/* Public routes (with public navbar) */}
+                <Route element={<PublicLayout />}>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/showcase" element={<Showcase />} />
+                  <Route path="/partners" element={<Partners />} />
+                  <Route path="/video-velocity" element={<VideoVelocity />} />
+                  <Route path="/onboarding" element={<Onboarding />} />
+                </Route>
 
-              {/* Auth routes (no navbar/sidebar) */}
-              <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<Signup />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
+                {/* Auth routes (no navbar/sidebar) */}
+                <Route path="/login" element={<Login />} />
+                <Route path="/signup" element={<Signup />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
 
-              {/* Member workspace (Offer + Distribution Engine) */}
-              <Route
-                element={
-                  <ProtectedRoute requireRole="member">
-                    <DashboardLayout />
-                  </ProtectedRoute>
-                }
-              >
-                <Route path="/dashboard" element={<DashboardOverview />} />
-                <Route path="/engines" element={<Engines />} />
-                <Route path="/engines/offer" element={<OfferEngine />} />
-                <Route path="/engines/offer/history" element={<OfferHistory />} />
-                <Route path="/assets" element={<Assets />} />
-                <Route path="/distribution" element={<Distribution />} />
-                <Route path="/distribution/calendar" element={<DistributionCalendar />} />
-                <Route path="/settings" element={<Settings />} />
-              </Route>
+                {/* Member workspace (Offer + Distribution Engine) */}
+                <Route
+                  element={
+                    <ProtectedRoute requireRole="member">
+                      <DashboardLayout />
+                    </ProtectedRoute>
+                  }
+                >
+                  <Route path="/dashboard" element={<DashboardOverview />} />
+                  <Route path="/engines" element={<Engines />} />
+                  <Route path="/engines/offer" element={<OfferEngine />} />
+                  <Route path="/engines/offer/history" element={<OfferHistory />} />
+                  <Route path="/assets" element={<Assets />} />
+                  <Route path="/distribution" element={<Distribution />} />
+                  <Route path="/distribution/calendar" element={<DistributionCalendar />} />
+                  <Route path="/settings" element={<Settings />} />
+                </Route>
 
-              {/* Admin command center */}
-              <Route
-                element={
-                  <ProtectedRoute requireRole="admin">
-                    <AdminLayout />
-                  </ProtectedRoute>
-                }
-              >
-                <Route path="/admin" element={<CommandBoard />} />
-                <Route path="/admin/performance" element={<AdminPerformance />} />
-                <Route path="/admin/clients" element={<Clients />} />
-                <Route path="/admin/deployments" element={<Deployments />} />
-                <Route path="/admin/agents" element={<Agents />} />
-                <Route path="/admin/workflows" element={<Workflows />} />
-                <Route path="/admin/revenue" element={<Revenue />} />
-                <Route path="/admin/content" element={<Content />} />
-                <Route path="/admin/support" element={<AdminSupport />} />
-                <Route path="/admin/settings" element={<AdminSettings />} />
-              </Route>
+                {/* Admin command center */}
+                <Route
+                  element={
+                    <ProtectedRoute requireRole="admin">
+                      <AdminLayout />
+                    </ProtectedRoute>
+                  }
+                >
+                  <Route path="/admin" element={<CommandBoard />} />
+                  <Route path="/admin/performance" element={<AdminPerformance />} />
+                  <Route path="/admin/clients" element={<Clients />} />
+                  <Route path="/admin/deployments" element={<Deployments />} />
+                  <Route path="/admin/agents" element={<Agents />} />
+                  <Route path="/admin/workflows" element={<Workflows />} />
+                  <Route path="/admin/revenue" element={<Revenue />} />
+                  <Route path="/admin/content" element={<Content />} />
+                  <Route path="/admin/support" element={<AdminSupport />} />
+                  <Route path="/admin/settings" element={<AdminSettings />} />
+                </Route>
 
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
           </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>
