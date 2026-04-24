@@ -110,7 +110,7 @@ const DashboardOverview = () => {
     let cancelled = false;
     const load = async () => {
       setLoading(true);
-      const [offers, assets, scheduled, completed, tasksAll] = await Promise.all([
+      const [offers, assets, scheduled, completed, tasksAll, recentOffersRes, recentAssetsRes, recentTasksRes] = await Promise.all([
         supabase.from("offers").select("id", { count: "exact", head: true }),
         supabase.from("assets").select("id", { count: "exact", head: true }),
         supabase
@@ -124,6 +124,21 @@ const DashboardOverview = () => {
         supabase
           .from("distribution_tasks")
           .select("status, impressions, clicks, conversions, revenue_cents"),
+        supabase
+          .from("offers")
+          .select("id, title, status, created_at")
+          .order("created_at", { ascending: false })
+          .limit(5),
+        supabase
+          .from("assets")
+          .select("id, title, engine_key, status, created_at")
+          .order("created_at", { ascending: false })
+          .limit(5),
+        supabase
+          .from("distribution_tasks")
+          .select("id, task_title, channel, status, scheduled_at, created_at")
+          .order("created_at", { ascending: false })
+          .limit(5),
       ]);
       if (cancelled) return;
 
