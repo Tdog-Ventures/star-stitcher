@@ -378,7 +378,7 @@ interface RecentItem {
 
 interface RecentListProps {
   title: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: ComponentType<{ className?: string }>;
   items: RecentItem[];
   emptyTo: string;
   emptyLabel: string;
