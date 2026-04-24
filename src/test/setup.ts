@@ -42,7 +42,7 @@ vi.mock("@/integrations/supabase/client", () => {
     const chain: Record<string, (...args: unknown[]) => unknown> = {};
     const make = (): typeof chain => {
       const c: typeof chain = {};
-      ["select", "insert", "update", "delete", "eq", "order", "single", "limit", "range"].forEach((m) => {
+      ["select", "insert", "update", "delete", "eq", "neq", "is", "not", "in", "order", "single", "maybeSingle", "limit", "range"].forEach((m) => {
         c[m] = () => make();
       });
       return Object.assign(result, c) as unknown as typeof chain;
