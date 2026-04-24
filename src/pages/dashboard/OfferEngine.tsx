@@ -129,9 +129,9 @@ const OfferEngine = () => {
             <Sparkles className="mr-2 h-4 w-4" />
             AI assist (soon)
           </Button>
-          <Button size="sm" onClick={handleSave} disabled={!isComplete}>
+          <Button size="sm" onClick={handleSave} disabled={!isComplete || saving}>
             <Save className="mr-2 h-4 w-4" />
-            Save as asset
+            {saving ? "Saving…" : "Save as asset"}
           </Button>
         </>
       }
