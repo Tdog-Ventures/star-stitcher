@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Save, Sparkles } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ArrowRight, FileText, Save, Send, Sparkles, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,12 +43,30 @@ const EMPTY: OfferFields = {
   cta: "",
 };
 
+const SAMPLE_OFFER: OfferFields = {
+  title: "Founder Audit Sprint",
+  productName: "ETHINX Audit",
+  targetAudience: "Solo SaaS founders making under $10k MRR",
+  mainProblem:
+    "You're shipping features but growth is flat — you can't tell which channel, message, or offer is actually working.",
+  desiredOutcome:
+    "A 90-minute audit that gives you a prioritized 30-day plan to grow MRR — focused on offer, distribution, and pricing.",
+  differentiator:
+    "Done with a founder, not a junior consultant. You leave with the plan, not a 40-page slide deck.",
+  proof:
+    "12 audits run in the last 60 days. Average MRR lift in 30 days: 18%. Testimonials from Linear, Plain, and Tidepool.",
+  pricing: "$497 one-time",
+  guarantee: "If you don't get 3 prioritized growth bets, full refund. No questions.",
+  urgency: "5 spots open this month, closes Friday.",
+  cta: "Book your audit",
+};
+
 const OfferEngine = () => {
   const { toast } = useToast();
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [fields, setFields] = useState<OfferFields>(EMPTY);
   const [saving, setSaving] = useState(false);
+  const [savedAssetId, setSavedAssetId] = useState<string | null>(null);
 
   const set = <K extends keyof OfferFields>(key: K, value: OfferFields[K]) =>
     setFields((prev) => ({ ...prev, [key]: value }));
@@ -93,29 +111,46 @@ const OfferEngine = () => {
 
     await trackEvent("offer_saved", { offer_id: offer.id });
 
-    const { error: assetErr } = await supabase.from("assets").insert({
-      user_id: user.id,
-      engine_key: "offer",
-      source_record_id: offer.id,
-      title: offer.title,
-      content: [
-        offer.product_name && `Product: ${offer.product_name}`,
-        offer.desired_outcome && `Outcome: ${offer.desired_outcome}`,
-        offer.cta && `CTA: ${offer.cta}`,
-      ].filter(Boolean).join("\n"),
-      status: "draft",
-    });
+    const { data: asset, error: assetErr } = await supabase
+      .from("assets")
+      .insert({
+        user_id: user.id,
+        engine_key: "offer",
+        source_record_id: offer.id,
+        title: offer.title,
+        content: [
+          offer.product_name && `Product: ${offer.product_name}`,
+          offer.desired_outcome && `Outcome: ${offer.desired_outcome}`,
+          offer.cta && `CTA: ${offer.cta}`,
+        ].filter(Boolean).join("\n"),
+        status: "draft",
+      })
+      .select()
+      .single();
 
     setSaving(false);
-    if (assetErr) {
-      toast({ title: "Offer saved, asset failed", description: assetErr.message, variant: "destructive" });
+    if (assetErr || !asset) {
+      toast({ title: "Offer saved, asset failed", description: assetErr?.message, variant: "destructive" });
       return;
     }
 
     await trackEvent("asset_created", { source: "offer", offer_id: offer.id });
     toast({ title: "Saved", description: "Offer and asset created." });
+    setSavedAssetId(asset.id);
+  };
+
+  const loadSample = () => {
+    setFields(SAMPLE_OFFER);
+    setSavedAssetId(null);
+    toast({
+      title: "Sample loaded",
+      description: "Edit anything you want, then click Save as asset.",
+    });
+  };
+
+  const startNew = () => {
     setFields(EMPTY);
-    navigate("/assets");
+    setSavedAssetId(null);
   };
 
 
@@ -125,6 +160,10 @@ const OfferEngine = () => {
       description="Fill the structure manually. Every field is optional except title, product name, and CTA. Edit until it's right, then save as a reusable asset."
       actions={
         <>
+          <Button variant="outline" size="sm" onClick={loadSample}>
+            <Wand2 className="mr-2 h-4 w-4" />
+            Load sample offer
+          </Button>
           <Button variant="outline" size="sm" disabled>
             <Sparkles className="mr-2 h-4 w-4" />
             AI assist (soon)
@@ -180,14 +219,48 @@ const OfferEngine = () => {
         </PreviewCard>
       }
     >
-      <div className="rounded-lg border border-dashed border-primary/30 bg-primary/5 p-4 text-sm text-foreground">
-        <p className="font-medium">New here? Three steps to your first asset.</p>
-        <ol className="mt-1 list-decimal pl-5 text-muted-foreground">
-          <li>Fill in title, product name, and CTA — that's the minimum.</li>
-          <li>Add as much positioning detail as you want; everything is editable later.</li>
-          <li>Click <strong className="text-foreground">Save as asset</strong> to create a reusable asset and unlock distribution.</li>
-        </ol>
-      </div>
+      {savedAssetId ? (
+        <div className="rounded-lg border border-primary/40 bg-primary/5 p-4">
+          <div className="flex items-start gap-3">
+            <FileText className="mt-0.5 h-5 w-5 text-primary" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-foreground">
+                Asset saved. Next: schedule distribution.
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Pick a channel and date to plan when this offer goes out. Nothing posts automatically.
+              </p>
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button asChild size="sm">
+              <Link to="/assets">
+                <Send className="mr-2 h-4 w-4" />
+                Schedule distribution
+              </Link>
+            </Button>
+            <Button variant="outline" size="sm" onClick={startNew}>
+              Create another offer
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-dashed border-primary/30 bg-primary/5 p-4 text-sm text-foreground">
+          <p className="font-medium">New here? Three steps to your first asset.</p>
+          <ol className="mt-1 list-decimal pl-5 text-muted-foreground">
+            <li>Fill in title, product name, and CTA — that's the minimum.</li>
+            <li>Add as much positioning detail as you want; everything is editable later.</li>
+            <li>
+              Click <strong className="text-foreground">Save as asset</strong> to create a reusable
+              asset and unlock distribution.
+            </li>
+          </ol>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Not sure where to start? Click <strong className="text-foreground">Load sample offer</strong> to prefill realistic demo data you can edit.
+          </p>
+        </div>
+      )}
 
       <FormSection
         title="The basics"
