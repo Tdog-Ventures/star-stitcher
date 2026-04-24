@@ -48,6 +48,8 @@ import {
   isAllowedStatus,
   useDistributionTasks,
 } from "@/lib/distribution-tasks";
+import { markCsvExported } from "@/lib/onboarding";
+import { useAuth } from "@/providers/AuthProvider";
 
 type FilterValue = "all" | TaskStatus;
 
