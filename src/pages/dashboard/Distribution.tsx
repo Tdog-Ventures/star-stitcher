@@ -71,10 +71,10 @@ const Distribution = () => {
 
   const changeStatus = async (id: string, next: TaskStatus) => {
     setUpdating(id);
-    const patch: Record<string, unknown> = { status: next };
-    if (next === "completed") patch.sent_at = new Date().toISOString();
-    if (next !== "completed") patch.sent_at = null;
-
+    const patch = {
+      status: next,
+      sent_at: next === "completed" ? new Date().toISOString() : null,
+    };
     const { error } = await supabase
       .from("distribution_tasks")
       .update(patch)
