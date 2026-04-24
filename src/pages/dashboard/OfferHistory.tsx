@@ -61,6 +61,12 @@ interface TaskLite {
   status: string;
   scheduled_at: string | null;
   asset_id: string | null;
+  campaign_name: string | null;
+  impressions: number;
+  clicks: number;
+  conversions: number;
+  revenue_cents: number;
+  linked_offer_id: string | null;
 }
 
 const formatDate = (iso: string | null) =>
