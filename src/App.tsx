@@ -9,6 +9,7 @@ import { AuthProvider } from "@/providers/AuthProvider";
 import { ThemeProvider } from "@/providers/ThemeProvider";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { ScrollToTop } from "@/components/ScrollToTop";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 import { PublicLayout } from "@/components/layouts/PublicLayout";
 import { DashboardLayout } from "@/components/layouts/DashboardLayout";
@@ -39,6 +40,8 @@ const Assets = lazy(() => import("./pages/dashboard/Assets"));
 const Distribution = lazy(() => import("./pages/dashboard/Distribution"));
 const DistributionCalendar = lazy(() => import("./pages/dashboard/DistributionCalendar"));
 const Settings = lazy(() => import("./pages/dashboard/Settings"));
+const SettingsAccount = lazy(() => import("./pages/dashboard/SettingsAccount"));
+const SettingsWorkspace = lazy(() => import("./pages/dashboard/SettingsWorkspace"));
 
 // Admin (Command Center) — lazy (heavy: performance board, command board)
 const CommandBoard = lazy(() => import("./pages/admin/CommandBoard"));
@@ -69,9 +72,10 @@ function RouteFallback() {
 }
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider>
-      <AuthProvider>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <AuthProvider>
         <TooltipProvider>
           <Toaster />
           <Sonner />
@@ -110,6 +114,8 @@ const App = () => (
                   <Route path="/distribution" element={<Distribution />} />
                   <Route path="/distribution/calendar" element={<DistributionCalendar />} />
                   <Route path="/settings" element={<Settings />} />
+                  <Route path="/settings/account" element={<SettingsAccount />} />
+                  <Route path="/settings/workspace" element={<SettingsWorkspace />} />
                 </Route>
 
                 {/* Admin command center */}
