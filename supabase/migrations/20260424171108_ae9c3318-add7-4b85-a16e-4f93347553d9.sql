@@ -1,0 +1,1 @@
+ALTER TABLE public.distribution_tasks ADD COLUMN IF NOT EXISTS campaign_name TEXT;
