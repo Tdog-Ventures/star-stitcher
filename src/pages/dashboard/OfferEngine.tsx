@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Save, Sparkles } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ArrowRight, FileText, Save, Send, Sparkles, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,12 +43,30 @@ const EMPTY: OfferFields = {
   cta: "",
 };
 
+const SAMPLE_OFFER: OfferFields = {
+  title: "Founder Audit Sprint",
+  productName: "ETHINX Audit",
+  targetAudience: "Solo SaaS founders making under $10k MRR",
+  mainProblem:
+    "You're shipping features but growth is flat — you can't tell which channel, message, or offer is actually working.",
+  desiredOutcome:
+    "A 90-minute audit that gives you a prioritized 30-day plan to grow MRR — focused on offer, distribution, and pricing.",
+  differentiator:
+    "Done with a founder, not a junior consultant. You leave with the plan, not a 40-page slide deck.",
+  proof:
+    "12 audits run in the last 60 days. Average MRR lift in 30 days: 18%. Testimonials from Linear, Plain, and Tidepool.",
+  pricing: "$497 one-time",
+  guarantee: "If you don't get 3 prioritized growth bets, full refund. No questions.",
+  urgency: "5 spots open this month, closes Friday.",
+  cta: "Book your audit",
+};
+
 const OfferEngine = () => {
   const { toast } = useToast();
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [fields, setFields] = useState<OfferFields>(EMPTY);
   const [saving, setSaving] = useState(false);
+  const [savedAssetId, setSavedAssetId] = useState<string | null>(null);
 
   const set = <K extends keyof OfferFields>(key: K, value: OfferFields[K]) =>
     setFields((prev) => ({ ...prev, [key]: value }));
