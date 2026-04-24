@@ -89,6 +89,7 @@ const DistributionCalendar = () => {
     toggleChecklist,
     isChecklistComplete,
     markReady,
+    updateMetrics,
   } = useDistributionTasks();
 
   const [range, setRange] = useState<RangeValue>("upcoming");
@@ -287,6 +288,7 @@ const DistributionCalendar = () => {
         toggleChecklist={toggleChecklist}
         isChecklistComplete={isChecklistComplete}
         markReady={markReady}
+        updateMetrics={updateMetrics}
       />
     </EngineLayout>
   );
