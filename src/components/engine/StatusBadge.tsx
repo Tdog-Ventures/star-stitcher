@@ -6,7 +6,11 @@ export type EngineStatus =
   | "ready"
   | "planned"
   | "scheduled"
+  | "queued"
+  | "running"
   | "sent"
+  | "completed"
+  | "failed"
   | "archived";
 
 const STATUS_STYLES: Record<EngineStatus, string> = {
@@ -14,7 +18,11 @@ const STATUS_STYLES: Record<EngineStatus, string> = {
   ready: "bg-primary/10 text-primary border-primary/20",
   planned: "bg-secondary text-secondary-foreground",
   scheduled: "bg-accent text-accent-foreground",
+  queued: "bg-secondary text-secondary-foreground",
+  running: "bg-primary/10 text-primary border-primary/20",
   sent: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20 dark:text-emerald-400",
+  completed: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20 dark:text-emerald-400",
+  failed: "bg-destructive/10 text-destructive border-destructive/20",
   archived: "bg-muted/40 text-muted-foreground line-through",
 };
 
@@ -23,7 +31,11 @@ const STATUS_LABEL: Record<EngineStatus, string> = {
   ready: "Ready",
   planned: "Planned",
   scheduled: "Scheduled",
+  queued: "Queued",
+  running: "Running",
   sent: "Sent",
+  completed: "Completed",
+  failed: "Failed",
   archived: "Archived",
 };
 
@@ -32,10 +44,6 @@ interface StatusBadgeProps {
   className?: string;
 }
 
-/**
- * Manual-first status indicator used across offers, assets, and distribution tasks.
- * Keeps a calm SaaS palette — no flashy colours.
- */
 export function StatusBadge({ status, className }: StatusBadgeProps) {
   return (
     <Badge
