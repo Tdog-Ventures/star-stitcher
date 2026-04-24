@@ -180,6 +180,15 @@ const OfferEngine = () => {
         </PreviewCard>
       }
     >
+      <div className="rounded-lg border border-dashed border-primary/30 bg-primary/5 p-4 text-sm text-foreground">
+        <p className="font-medium">New here? Three steps to your first asset.</p>
+        <ol className="mt-1 list-decimal pl-5 text-muted-foreground">
+          <li>Fill in title, product name, and CTA — that's the minimum.</li>
+          <li>Add as much positioning detail as you want; everything is editable later.</li>
+          <li>Click <strong className="text-foreground">Save as asset</strong> to create a reusable asset and unlock distribution.</li>
+        </ol>
+      </div>
+
       <FormSection
         title="The basics"
         description="Name the offer and the product it sells."
