@@ -80,6 +80,7 @@ export type Database = {
       distribution_tasks: {
         Row: {
           asset_id: string | null
+          campaign_name: string | null
           channel: string
           created_at: string
           id: string
@@ -95,6 +96,7 @@ export type Database = {
         }
         Insert: {
           asset_id?: string | null
+          campaign_name?: string | null
           channel: string
           created_at?: string
           id?: string
@@ -110,6 +112,7 @@ export type Database = {
         }
         Update: {
           asset_id?: string | null
+          campaign_name?: string | null
           channel?: string
           created_at?: string
           id?: string

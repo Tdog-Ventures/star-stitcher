@@ -23,6 +23,7 @@ interface AssetTableProps {
   rows: AssetRow[];
   emptyState?: ReactNode;
   onRowClick?: (row: AssetRow) => void;
+  rowActions?: (row: AssetRow) => ReactNode;
   className?: string;
 }
 
@@ -34,6 +35,7 @@ export function AssetTable({
   rows,
   emptyState,
   onRowClick,
+  rowActions,
   className,
 }: AssetTableProps) {
   if (rows.length === 0) {
@@ -59,6 +61,7 @@ export function AssetTable({
             <TableHead className="hidden md:table-cell">Channel</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="hidden lg:table-cell">Updated</TableHead>
+            {rowActions && <TableHead className="text-right">Actions</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -83,6 +86,14 @@ export function AssetTable({
               <TableCell className="hidden lg:table-cell text-muted-foreground">
                 {row.updatedAt}
               </TableCell>
+              {rowActions && (
+                <TableCell
+                  className="text-right"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {rowActions(row)}
+                </TableCell>
+              )}
             </TableRow>
           ))}
         </TableBody>
