@@ -55,6 +55,7 @@ function renderApp() {
 }
 
 const NAV_STEPS: { link: string; href: string; heading: RegExp }[] = [
+  { link: "Performance", href: "/admin/performance", heading: /Performance Board/i },
   { link: "Clients", href: "/admin/clients", heading: /^Clients$/i },
   { link: "Deployments", href: "/admin/deployments", heading: /Deployments/i },
   { link: "Agents", href: "/admin/agents", heading: /Agents/i },
@@ -68,6 +69,7 @@ const NAV_STEPS: { link: string; href: string; heading: RegExp }[] = [
 
 const SIDEBAR_LINKS = [
   "Command Board",
+  "Performance",
   "Clients",
   "Deployments",
   "Agents",
