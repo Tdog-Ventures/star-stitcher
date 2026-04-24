@@ -27,26 +27,55 @@ import {
   type OnboardingSignals,
 } from "@/lib/onboarding";
 
-const SHORTCUTS = [
+const QUICK_ACTIONS = [
   {
-    to: "/engines",
-    title: "Open an engine",
-    description: "Turn a rough idea into a structured offer.",
-    icon: Sparkles,
+    to: "/engines/offer",
+    title: "Create offer",
+    description: "Open the Offer Engine and structure a new offer.",
+    icon: Plus,
   },
   {
     to: "/assets",
-    title: "Browse assets",
-    description: "Reuse anything you've already written.",
+    title: "View assets",
+    description: "Browse everything you've saved across engines.",
     icon: Layers,
   },
   {
     to: "/distribution",
-    title: "Plan distribution",
-    description: "Map saved assets to channels and dates.",
+    title: "Schedule distribution",
+    description: "Plan when and where assets go out.",
     icon: Send,
   },
+  {
+    to: "/engines/offer/history",
+    title: "View performance",
+    description: "Compare offers, channels, and revenue.",
+    icon: BarChart3,
+  },
 ];
+
+interface RecentOffer {
+  id: string;
+  title: string;
+  status: string;
+  created_at: string;
+}
+interface RecentAsset {
+  id: string;
+  title: string;
+  engine_key: string;
+  status: string;
+  created_at: string;
+}
+interface RecentTask {
+  id: string;
+  task_title: string;
+  channel: string;
+  status: string;
+  scheduled_at: string | null;
+  created_at: string;
+}
+
 
 interface Stats {
   offers: number;
