@@ -18,13 +18,8 @@ import Content from "@/pages/admin/Content";
 import AdminSupport from "@/pages/admin/AdminSupport";
 import AdminSettings from "@/pages/admin/AdminSettings";
 
-const STORAGE_KEY = "ethinx.auth.stub";
-
 function seedAdmin() {
-  localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify({ id: "stub-admin", email: "admin@ethinx.dev", role: "admin" }),
-  );
+  globalThis.__TEST_AUTH__ = { id: "stub-admin", email: "admin@ethinx.dev", role: "admin" };
 }
 
 function renderApp() {
@@ -110,7 +105,7 @@ describe("Admin sidebar navigation", () => {
 
   afterEach(() => {
     cleanup();
-    localStorage.clear();
+    globalThis.__TEST_AUTH__ = null;
     errorSpy.mockRestore();
   });
 

@@ -6,7 +6,7 @@ import { useTheme } from "@/providers/ThemeProvider";
 import { EngineLayout, FormSection } from "@/components/engine";
 
 const Settings = () => {
-  const { user, signOut } = useAuth();
+  const { user, role, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
   return (
@@ -22,7 +22,7 @@ const Settings = () => {
           </div>
           <div className="space-y-2">
             <Label htmlFor="role">Role</Label>
-            <Input id="role" value={user?.role ?? "guest"} disabled />
+            <Input id="role" value={role ?? "user"} disabled />
           </div>
         </div>
       </FormSection>

@@ -13,7 +13,7 @@ const links = [
 ];
 
 export function PublicNavbar() {
-  const { user, signOut } = useAuth();
+  const { user, role, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
   return (
@@ -45,8 +45,8 @@ export function PublicNavbar() {
           {user ? (
             <>
               <Button asChild variant="ghost" size="sm">
-                <Link to={user.role === "admin" ? "/admin" : "/dashboard"}>
-                  {user.role === "admin" ? "Admin" : "Dashboard"}
+                <Link to={role === "admin" ? "/admin" : "/dashboard"}>
+                  {role === "admin" ? "Admin" : "Dashboard"}
                 </Link>
               </Button>
               <Button variant="outline" size="sm" onClick={signOut}>
