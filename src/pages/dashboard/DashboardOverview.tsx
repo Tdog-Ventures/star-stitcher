@@ -87,6 +87,9 @@ interface Stats {
 const DashboardOverview = () => {
   const { user } = useAuth();
   const [stats, setStats] = useState<Stats>({ offers: 0, assets: 0, scheduled: 0, completed: 0 });
+  const [recentOffers, setRecentOffers] = useState<RecentOffer[]>([]);
+  const [recentAssets, setRecentAssets] = useState<RecentAsset[]>([]);
+  const [recentTasks, setRecentTasks] = useState<RecentTask[]>([]);
   const [signals, setSignals] = useState<OnboardingSignals>({
     offers: 0,
     assets: 0,
