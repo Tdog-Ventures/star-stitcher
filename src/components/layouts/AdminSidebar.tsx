@@ -8,6 +8,7 @@ import {
   FileText,
   LifeBuoy,
   Settings,
+  TrendingUp,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
@@ -24,6 +25,7 @@ import {
 
 const items = [
   { title: "Command Board", url: "/admin", icon: LayoutDashboard, end: true },
+  { title: "Performance", url: "/admin/performance", icon: TrendingUp },
   { title: "Clients", url: "/admin/clients", icon: Users },
   { title: "Deployments", url: "/admin/deployments", icon: Rocket },
   { title: "Agents", url: "/admin/agents", icon: Bot },
