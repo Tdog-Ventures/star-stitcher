@@ -219,14 +219,48 @@ const OfferEngine = () => {
         </PreviewCard>
       }
     >
-      <div className="rounded-lg border border-dashed border-primary/30 bg-primary/5 p-4 text-sm text-foreground">
-        <p className="font-medium">New here? Three steps to your first asset.</p>
-        <ol className="mt-1 list-decimal pl-5 text-muted-foreground">
-          <li>Fill in title, product name, and CTA — that's the minimum.</li>
-          <li>Add as much positioning detail as you want; everything is editable later.</li>
-          <li>Click <strong className="text-foreground">Save as asset</strong> to create a reusable asset and unlock distribution.</li>
-        </ol>
-      </div>
+      {savedAssetId ? (
+        <div className="rounded-lg border border-primary/40 bg-primary/5 p-4">
+          <div className="flex items-start gap-3">
+            <FileText className="mt-0.5 h-5 w-5 text-primary" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-foreground">
+                Asset saved. Next: schedule distribution.
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Pick a channel and date to plan when this offer goes out. Nothing posts automatically.
+              </p>
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button asChild size="sm">
+              <Link to="/assets">
+                <Send className="mr-2 h-4 w-4" />
+                Schedule distribution
+              </Link>
+            </Button>
+            <Button variant="outline" size="sm" onClick={startNew}>
+              Create another offer
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-dashed border-primary/30 bg-primary/5 p-4 text-sm text-foreground">
+          <p className="font-medium">New here? Three steps to your first asset.</p>
+          <ol className="mt-1 list-decimal pl-5 text-muted-foreground">
+            <li>Fill in title, product name, and CTA — that's the minimum.</li>
+            <li>Add as much positioning detail as you want; everything is editable later.</li>
+            <li>
+              Click <strong className="text-foreground">Save as asset</strong> to create a reusable
+              asset and unlock distribution.
+            </li>
+          </ol>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Not sure where to start? Click <strong className="text-foreground">Load sample offer</strong> to prefill realistic demo data you can edit.
+          </p>
+        </div>
+      )}
 
       <FormSection
         title="The basics"
