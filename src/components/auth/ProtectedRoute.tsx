@@ -4,11 +4,11 @@ import { useAuth, UserRole } from "@/providers/AuthProvider";
 
 interface ProtectedRouteProps {
   children: ReactNode;
-  requireRole?: Exclude<UserRole, "guest">;
+  requireRole?: Exclude<UserRole, "user">;
 }
 
 export function ProtectedRoute({ children, requireRole = "member" }: ProtectedRouteProps) {
-  const { user, loading } = useAuth();
+  const { user, role, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -23,8 +23,7 @@ export function ProtectedRoute({ children, requireRole = "member" }: ProtectedRo
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
 
-  // admin can access member routes; member cannot access admin
-  if (requireRole === "admin" && user.role !== "admin") {
+  if (requireRole === "admin" && role !== "admin") {
     return <Navigate to="/dashboard" replace />;
   }
 

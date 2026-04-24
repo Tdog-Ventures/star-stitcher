@@ -1,65 +1,74 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import type { Session, User } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
 
-/**
- * Stub AuthProvider for Phase 1.
- * Will be replaced with real Supabase auth in Phase 3 when Lovable Cloud is enabled.
- * State persists in localStorage so route gating can be tested.
- */
-
-export type UserRole = "guest" | "member" | "admin";
-
-interface AuthUser {
-  id: string;
-  email: string;
-  role: UserRole;
-}
+export type UserRole = "admin" | "member" | "user";
 
 interface AuthContextValue {
-  user: AuthUser | null;
+  user: User | null;
+  session: Session | null;
+  role: UserRole | null;
   loading: boolean;
-  signInAs: (role: UserRole) => void;
-  signOut: () => void;
+  signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-const STORAGE_KEY = "ethinx.auth.stub";
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [role, setRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setUser(JSON.parse(raw));
-    } catch {
-      // ignore
-    }
-    setLoading(false);
+    // Set up listener FIRST, then fetch session
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, sess) => {
+      setSession(sess);
+      setUser(sess?.user ?? null);
+      if (!sess?.user) {
+        setRole(null);
+      } else {
+        // Defer Supabase calls to avoid deadlock
+        setTimeout(() => fetchRole(sess.user.id), 0);
+      }
+    });
+
+    supabase.auth.getSession().then(({ data: { session: sess } }) => {
+      setSession(sess);
+      setUser(sess?.user ?? null);
+      if (sess?.user) {
+        fetchRole(sess.user.id);
+      }
+      setLoading(false);
+    });
+
+    return () => sub.subscription.unsubscribe();
   }, []);
 
-  const signInAs = (role: UserRole) => {
-    if (role === "guest") {
-      signOut();
+  const fetchRole = async (uid: string) => {
+    const { data } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", uid);
+    if (!data || data.length === 0) {
+      setRole("user");
       return;
     }
-    const next: AuthUser = {
-      id: `stub-${role}`,
-      email: `${role}@ethinx.dev`,
-      role,
-    };
-    setUser(next);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    const roles = data.map((r) => r.role as UserRole);
+    if (roles.includes("admin")) setRole("admin");
+    else if (roles.includes("member")) setRole("member");
+    else setRole("user");
   };
 
-  const signOut = () => {
+  const signOut = async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem(STORAGE_KEY);
+    setSession(null);
+    setRole(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signInAs, signOut }}>
+    <AuthContext.Provider value={{ user, session, role, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   );
