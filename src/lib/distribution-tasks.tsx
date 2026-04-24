@@ -304,6 +304,7 @@ interface TaskDetailDrawerProps {
   toggleChecklist: (id: string, key: ChecklistKey, value: boolean) => void;
   isChecklistComplete: (id: string) => boolean;
   markReady: (id: string) => void;
+  updateMetrics?: (id: string, metrics: TaskMetricsInput) => void;
 }
 
 export const TaskDetailDrawer = ({
@@ -314,6 +315,7 @@ export const TaskDetailDrawer = ({
   toggleChecklist,
   isChecklistComplete,
   markReady,
+  updateMetrics,
 }: TaskDetailDrawerProps) => {
   return useMemo(
     () => (
@@ -386,6 +388,17 @@ export const TaskDetailDrawer = ({
 
                 <Separator />
 
+                {updateMetrics && task.status === "completed" ? (
+                  <>
+                    <MetricsEditor
+                      task={task}
+                      onSave={(m) => updateMetrics(task.id, m)}
+                      saving={updating === task.id}
+                    />
+                    <Separator />
+                  </>
+                ) : null}
+
                 <section className="space-y-3">
                   <h3 className="text-sm font-semibold text-foreground">Status history</h3>
                   <ul className="space-y-2 text-sm text-muted-foreground">
@@ -432,7 +445,104 @@ export const TaskDetailDrawer = ({
         </SheetContent>
       </Sheet>
     ),
-    [task, onClose, updating, checklistFor, toggleChecklist, isChecklistComplete, markReady],
+    [task, onClose, updating, checklistFor, toggleChecklist, isChecklistComplete, markReady, updateMetrics],
+  );
+};
+
+interface MetricsEditorProps {
+  task: TaskRecord;
+  saving: boolean;
+  onSave: (metrics: TaskMetricsInput) => void;
+}
+
+const MetricsEditor = ({ task, saving, onSave }: MetricsEditorProps) => {
+  const [impressions, setImpressions] = useState<string>(String(task.impressions ?? 0));
+  const [clicks, setClicks] = useState<string>(String(task.clicks ?? 0));
+  const [conversions, setConversions] = useState<string>(String(task.conversions ?? 0));
+  const [revenueDollars, setRevenueDollars] = useState<string>(
+    ((task.revenue_cents ?? 0) / 100).toFixed(2),
+  );
+
+  // Re-sync if a different task is opened
+  useEffect(() => {
+    setImpressions(String(task.impressions ?? 0));
+    setClicks(String(task.clicks ?? 0));
+    setConversions(String(task.conversions ?? 0));
+    setRevenueDollars(((task.revenue_cents ?? 0) / 100).toFixed(2));
+  }, [task.id, task.impressions, task.clicks, task.conversions, task.revenue_cents]);
+
+  const handleSave = () => {
+    onSave({
+      impressions: Number(impressions) || 0,
+      clicks: Number(clicks) || 0,
+      conversions: Number(conversions) || 0,
+      revenue_cents: Math.round((Number(revenueDollars) || 0) * 100),
+    });
+  };
+
+  const ctr =
+    Number(impressions) > 0 ? (Number(clicks) / Number(impressions)) * 100 : 0;
+  const convRate =
+    Number(clicks) > 0 ? (Number(conversions) / Number(clicks)) * 100 : 0;
+
+  return (
+    <section className="space-y-3">
+      <h3 className="text-sm font-semibold text-foreground">Performance</h3>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <Label htmlFor="impressions" className="text-xs">Impressions</Label>
+          <Input
+            id="impressions"
+            type="number"
+            min={0}
+            value={impressions}
+            onChange={(e) => setImpressions(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="clicks" className="text-xs">Clicks</Label>
+          <Input
+            id="clicks"
+            type="number"
+            min={0}
+            value={clicks}
+            onChange={(e) => setClicks(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="conversions" className="text-xs">Conversions</Label>
+          <Input
+            id="conversions"
+            type="number"
+            min={0}
+            value={conversions}
+            onChange={(e) => setConversions(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="revenue" className="text-xs">Revenue ($)</Label>
+          <Input
+            id="revenue"
+            type="number"
+            min={0}
+            step="0.01"
+            value={revenueDollars}
+            onChange={(e) => setRevenueDollars(e.target.value)}
+          />
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-muted/30 px-3 py-2 text-xs">
+        <span className="text-muted-foreground">
+          CTR <span className="text-foreground font-medium">{ctr.toFixed(1)}%</span>
+        </span>
+        <span className="text-muted-foreground">
+          Conv <span className="text-foreground font-medium">{convRate.toFixed(1)}%</span>
+        </span>
+        <Button size="sm" onClick={handleSave} disabled={saving}>
+          {saving ? "Saving…" : "Save metrics"}
+        </Button>
+      </div>
+    </section>
   );
 };
 
