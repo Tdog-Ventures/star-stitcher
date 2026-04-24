@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus } from "lucide-react";
+import { Plus, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,15 +9,26 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/providers/AuthProvider";
 import { trackEvent } from "@/lib/analytics";
+import {
+  CHANNELS,
+  distributeFormSchema,
+  type Channel,
+} from "@/lib/distribution";
 import { EngineLayout, AssetTable, type AssetRow } from "@/components/engine";
 import type { EngineStatus } from "@/components/engine/StatusBadge";
 
@@ -27,9 +38,15 @@ interface AssetRecord {
   engine_key: string;
   channel: string | null;
   status: string;
+  source_record_id: string | null;
   created_at: string;
   updated_at: string;
 }
+
+const toLocalInput = (d: Date) => {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
 
 const Assets = () => {
   const { user } = useAuth();
@@ -40,9 +57,11 @@ const Assets = () => {
 
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<AssetRecord | null>(null);
-  const [channel, setChannel] = useState("");
-  const [taskTitle, setTaskTitle] = useState("");
-  const [taskContent, setTaskContent] = useState("");
+  const [channel, setChannel] = useState<Channel | "">("");
+  const [campaignName, setCampaignName] = useState("");
+  const [scheduledAt, setScheduledAt] = useState("");
+  const [notes, setNotes] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
   const load = async () => {
@@ -51,7 +70,7 @@ const Assets = () => {
     setError(null);
     const { data, error } = await supabase
       .from("assets")
-      .select("id, title, engine_key, channel, status, created_at, updated_at")
+      .select("id, title, engine_key, channel, status, source_record_id, created_at, updated_at")
       .order("created_at", { ascending: false });
     if (error) setError(error.message);
     else setRows(data ?? []);
@@ -63,34 +82,71 @@ const Assets = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
-  const openTaskDialog = (row: AssetRow) => {
+  const defaultScheduled = useMemo(() => {
+    const d = new Date();
+    d.setMinutes(0, 0, 0);
+    d.setHours(d.getHours() + 1);
+    return toLocalInput(d);
+  }, []);
+
+  const openDistribute = (row: AssetRow) => {
     const rec = rows.find((r) => r.id === row.id) ?? null;
     if (!rec) return;
     setSelected(rec);
-    setChannel(rec.channel ?? "");
-    setTaskTitle(rec.title);
-    setTaskContent("");
+    setChannel("");
+    setCampaignName("");
+    setScheduledAt(defaultScheduled);
+    setNotes("");
+    setErrors({});
     setOpen(true);
   };
 
-  const createTask = async () => {
+  const submit = async () => {
     if (!user || !selected) return;
-    setSubmitting(true);
-    const { error } = await supabase.from("distribution_tasks").insert({
-      user_id: user.id,
-      asset_id: selected.id,
-      channel: channel || "general",
-      task_title: taskTitle,
-      task_content: taskContent || null,
-      status: "draft",
+    const parsed = distributeFormSchema.safeParse({
+      channel,
+      campaignName,
+      scheduledAt,
+      notes: notes || undefined,
     });
-    setSubmitting(false);
-    if (error) {
-      toast({ title: "Could not create task", description: error.message, variant: "destructive" });
+    if (!parsed.success) {
+      const next: Record<string, string> = {};
+      for (const issue of parsed.error.issues) {
+        next[issue.path.join(".")] = issue.message;
+      }
+      setErrors(next);
       return;
     }
-    await trackEvent("distribution_task_created", { asset_id: selected.id, channel });
-    toast({ title: "Task created", description: "See it in Distribution." });
+    setErrors({});
+    setSubmitting(true);
+    const { data: task, error } = await supabase
+      .from("distribution_tasks")
+      .insert({
+        user_id: user.id,
+        asset_id: selected.id,
+        linked_offer_id: selected.source_record_id ?? null,
+        channel: parsed.data.channel,
+        campaign_name: parsed.data.campaignName,
+        task_title: selected.title,
+        task_content: null,
+        scheduled_at: new Date(parsed.data.scheduledAt).toISOString(),
+        notes: parsed.data.notes ?? null,
+        status: "queued",
+      })
+      .select()
+      .single();
+    setSubmitting(false);
+    if (error || !task) {
+      toast({ title: "Could not create task", description: error?.message, variant: "destructive" });
+      return;
+    }
+    await trackEvent("distribution_task_created", {
+      asset_id: selected.id,
+      channel: parsed.data.channel,
+      campaign_name: parsed.data.campaignName,
+      scheduled_at: parsed.data.scheduledAt,
+    });
+    toast({ title: "Queued for distribution", description: `${parsed.data.channel} · ${parsed.data.campaignName}` });
     setOpen(false);
   };
 
@@ -106,7 +162,7 @@ const Assets = () => {
   return (
     <EngineLayout
       title="Assets"
-      description="Everything you've created across engines lives here. Click a row to plan distribution."
+      description="Everything you've created across engines lives here. Click Distribute to plan a post."
       actions={
         <Button asChild size="sm">
           <Link to="/engines">
@@ -127,7 +183,12 @@ const Assets = () => {
       ) : (
         <AssetTable
           rows={tableRows}
-          onRowClick={openTaskDialog}
+          rowActions={(row) => (
+            <Button size="sm" variant="outline" onClick={() => openDistribute(row)}>
+              <Send className="mr-2 h-3.5 w-3.5" />
+              Distribute
+            </Button>
+          )}
           emptyState={
             <span>
               No saved assets yet. Open the{" "}
@@ -141,33 +202,69 @@ const Assets = () => {
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Plan distribution</DialogTitle>
+            <DialogTitle>Distribute asset</DialogTitle>
             <DialogDescription>
-              Create a manual distribution task from "{selected?.title}".
+              Plan when and where "{selected?.title}" goes out. Nothing is posted automatically.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="channel">Channel</Label>
-              <Input id="channel" value={channel} onChange={(e) => setChannel(e.target.value)}
-                placeholder="e.g. LinkedIn, X, Email" />
+              <Select value={channel} onValueChange={(v) => setChannel(v as Channel)}>
+                <SelectTrigger id="channel">
+                  <SelectValue placeholder="Pick a channel" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CHANNELS.map((c) => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.channel && <p className="text-xs text-destructive">{errors.channel}</p>}
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="taskTitle">Task title</Label>
-              <Input id="taskTitle" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} />
+              <Label htmlFor="campaignName">Campaign name</Label>
+              <Input
+                id="campaignName"
+                maxLength={120}
+                value={campaignName}
+                onChange={(e) => setCampaignName(e.target.value)}
+                placeholder="e.g. Audit launch · April"
+              />
+              {errors.campaignName && <p className="text-xs text-destructive">{errors.campaignName}</p>}
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="taskContent">Content (optional)</Label>
-              <Textarea id="taskContent" rows={4} value={taskContent}
-                onChange={(e) => setTaskContent(e.target.value)} />
+              <Label htmlFor="scheduledAt">Scheduled at</Label>
+              <Input
+                id="scheduledAt"
+                type="datetime-local"
+                value={scheduledAt}
+                onChange={(e) => setScheduledAt(e.target.value)}
+              />
+              {errors.scheduledAt && <p className="text-xs text-destructive">{errors.scheduledAt}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes (optional)</Label>
+              <Textarea
+                id="notes"
+                rows={3}
+                maxLength={2000}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Hooks, hashtags, links to assets, etc."
+              />
+              {errors.notes && <p className="text-xs text-destructive">{errors.notes}</p>}
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button onClick={createTask} disabled={submitting || !taskTitle.trim()}>
-              {submitting ? "Creating…" : "Create task"}
+            <Button onClick={submit} disabled={submitting}>
+              {submitting ? "Queueing…" : "Queue task"}
             </Button>
           </DialogFooter>
         </DialogContent>
