@@ -265,19 +265,74 @@ const DashboardOverview = () => {
         ))}
       </section>
 
-      <section className="grid gap-4 md:grid-cols-3">
-        {SHORTCUTS.map(({ to, title, description, icon: Icon }) => (
-          <Link
-            key={to}
-            to={to}
-            className="group rounded-lg border border-border bg-card p-5 shadow-sm transition-colors hover:border-primary/40 hover:bg-muted/40"
-          >
-            <Icon className="h-5 w-5 text-muted-foreground transition-colors group-hover:text-primary" />
-            <h3 className="mt-3 text-sm font-semibold text-foreground">{title}</h3>
-            <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-          </Link>
-        ))}
+      <section>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Quick actions
+        </h2>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {QUICK_ACTIONS.map(({ to, title, description, icon: Icon }) => (
+            <Link
+              key={to}
+              to={to}
+              className="group rounded-lg border border-border bg-card p-5 shadow-sm transition-colors hover:border-primary/40 hover:bg-muted/40"
+            >
+              <Icon className="h-5 w-5 text-muted-foreground transition-colors group-hover:text-primary" />
+              <h3 className="mt-3 text-sm font-semibold text-foreground">{title}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+            </Link>
+          ))}
+        </div>
       </section>
+
+      {!isFreshAccount ? (
+        <section>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Recent activity
+          </h2>
+          <div className="grid gap-4 lg:grid-cols-3">
+            <RecentList
+              title="Latest offers"
+              icon={FileText}
+              emptyTo="/engines/offer"
+              emptyLabel="Create an offer"
+              items={recentOffers.map((o) => ({
+                id: o.id,
+                primary: o.title,
+                secondary: new Date(o.created_at).toLocaleDateString(),
+                status: o.status as EngineStatus,
+              }))}
+              viewAllTo="/engines/offer/history"
+            />
+            <RecentList
+              title="Latest assets"
+              icon={Layers}
+              emptyTo="/engines/offer"
+              emptyLabel="Save your first asset"
+              items={recentAssets.map((a) => ({
+                id: a.id,
+                primary: a.title,
+                secondary: `${a.engine_key} · ${new Date(a.created_at).toLocaleDateString()}`,
+                status: a.status as EngineStatus,
+              }))}
+              viewAllTo="/assets"
+            />
+            <RecentList
+              title="Latest distribution tasks"
+              icon={Send}
+              emptyTo="/assets"
+              emptyLabel="Schedule a task"
+              items={recentTasks.map((t) => ({
+                id: t.id,
+                primary: t.task_title,
+                secondary: `${t.channel}${t.scheduled_at ? ` · ${new Date(t.scheduled_at).toLocaleString()}` : ""}`,
+                status: t.status as EngineStatus,
+              }))}
+              viewAllTo="/distribution"
+            />
+          </div>
+        </section>
+      ) : null}
+
 
       {isFreshAccount ? (
         <section className="rounded-lg border border-dashed border-border bg-card p-8 text-center">
