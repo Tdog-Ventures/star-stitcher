@@ -82,10 +82,14 @@ export type Database = {
           asset_id: string | null
           campaign_name: string | null
           channel: string
+          clicks: number
+          conversions: number
           created_at: string
           id: string
+          impressions: number
           linked_offer_id: string | null
           notes: string | null
+          revenue_cents: number
           scheduled_at: string | null
           sent_at: string | null
           status: string
@@ -98,10 +102,14 @@ export type Database = {
           asset_id?: string | null
           campaign_name?: string | null
           channel: string
+          clicks?: number
+          conversions?: number
           created_at?: string
           id?: string
+          impressions?: number
           linked_offer_id?: string | null
           notes?: string | null
+          revenue_cents?: number
           scheduled_at?: string | null
           sent_at?: string | null
           status?: string
@@ -114,10 +122,14 @@ export type Database = {
           asset_id?: string | null
           campaign_name?: string | null
           channel?: string
+          clicks?: number
+          conversions?: number
           created_at?: string
           id?: string
+          impressions?: number
           linked_offer_id?: string | null
           notes?: string | null
+          revenue_cents?: number
           scheduled_at?: string | null
           sent_at?: string | null
           status?: string

@@ -30,6 +30,7 @@ import ResetPassword from "./pages/auth/ResetPassword";
 import DashboardOverview from "./pages/dashboard/DashboardOverview";
 import Engines from "./pages/dashboard/Engines";
 import OfferEngine from "./pages/dashboard/OfferEngine";
+import OfferHistory from "./pages/dashboard/OfferHistory";
 import Assets from "./pages/dashboard/Assets";
 import Distribution from "./pages/dashboard/Distribution";
 import DistributionCalendar from "./pages/dashboard/DistributionCalendar";
@@ -86,6 +87,7 @@ const App = () => (
                 <Route path="/dashboard" element={<DashboardOverview />} />
                 <Route path="/engines" element={<Engines />} />
                 <Route path="/engines/offer" element={<OfferEngine />} />
+                <Route path="/engines/offer/history" element={<OfferHistory />} />
                 <Route path="/assets" element={<Assets />} />
                 <Route path="/distribution" element={<Distribution />} />
                 <Route path="/distribution/calendar" element={<DistributionCalendar />} />

@@ -1,6 +1,16 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarDays, List as ListIcon, Plus } from "lucide-react";
+import { Award, CalendarDays, List as ListIcon, Plus, TrendingUp } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  computeTotals,
+  formatCents,
+  formatPct,
+  hasPerformanceData,
+  rankByChannel,
+  rankByOffer,
+} from "@/lib/performance";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -50,6 +60,7 @@ const Distribution = () => {
     updating,
     changeStatus,
     markReady,
+    updateMetrics,
     checklistFor,
     toggleChecklist,
     isChecklistComplete,
@@ -57,6 +68,7 @@ const Distribution = () => {
 
   const [filter, setFilter] = useState<FilterValue>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [offerTitles, setOfferTitles] = useState<Record<string, string>>({});
 
   const summary = useMemo(() => computeSummary(rows), [rows]);
   const filteredRows = useMemo(
@@ -67,6 +79,31 @@ const Distribution = () => {
     () => rows.find((r) => r.id === selectedId) ?? null,
     [rows, selectedId],
   );
+
+  // Performance roll-ups (only across rows that already have data)
+  const totals = useMemo(() => computeTotals(rows), [rows]);
+  const channelLeader = useMemo(() => rankByChannel(rows)[0] ?? null, [rows]);
+  const offerLeader = useMemo(() => rankByOffer(rows)[0] ?? null, [rows]);
+  const showPerf = hasPerformanceData(rows);
+
+  // Resolve offer titles for the "best offer" card
+  useEffect(() => {
+    const id = offerLeader?.key;
+    if (!id || offerTitles[id]) return;
+    let cancelled = false;
+    supabase
+      .from("offers")
+      .select("id, title")
+      .eq("id", id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled || !data) return;
+        setOfferTitles((prev) => ({ ...prev, [data.id]: data.title }));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [offerLeader?.key, offerTitles]);
 
   return (
     <EngineLayout
@@ -102,6 +139,64 @@ const Distribution = () => {
           <SummaryCard label="Completed" value={summary.completed} />
           <SummaryCard label="Failed" value={summary.failed} tone="destructive" />
         </div>
+
+        {showPerf ? (
+          <div className="grid gap-3 md:grid-cols-3">
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+                <CardTitle className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Overall performance
+                </CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent className="space-y-1">
+                <p className="text-xl font-semibold text-foreground">
+                  {formatCents(totals.revenue_cents)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  CTR {formatPct(totals.ctr)} · Conv {formatPct(totals.conversionRate)} ·{" "}
+                  {formatCents(totals.revenuePerTask)}/task
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+                <CardTitle className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Best channel
+                </CardTitle>
+                <Award className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent className="space-y-1">
+                <p className="text-xl font-semibold text-foreground">
+                  {channelLeader ? channelLeader.key : "—"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {channelLeader
+                    ? `${formatCents(channelLeader.totals.revenue_cents)} · CTR ${formatPct(channelLeader.totals.ctr)}`
+                    : "Not enough data"}
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+                <CardTitle className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Best offer
+                </CardTitle>
+                <Award className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent className="space-y-1">
+                <p className="text-xl font-semibold text-foreground truncate">
+                  {offerLeader ? offerTitles[offerLeader.key] ?? "Unknown offer" : "—"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {offerLeader
+                    ? `${formatCents(offerLeader.totals.revenue_cents)} across ${offerLeader.totals.taskCount} task${offerLeader.totals.taskCount === 1 ? "" : "s"}`
+                    : "Link tasks to offers to compare"}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        ) : null}
 
         <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterValue)}>
           <TabsList className="flex-wrap">
@@ -217,6 +312,7 @@ const Distribution = () => {
         toggleChecklist={toggleChecklist}
         isChecklistComplete={isChecklistComplete}
         markReady={markReady}
+        updateMetrics={updateMetrics}
       />
     </EngineLayout>
   );
