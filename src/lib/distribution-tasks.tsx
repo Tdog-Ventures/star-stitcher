@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, ListChecks, Send } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +33,18 @@ export interface TaskRecord {
   updated_at: string;
   notes: string | null;
   asset_id: string | null;
+  linked_offer_id: string | null;
+  impressions: number;
+  clicks: number;
+  conversions: number;
+  revenue_cents: number;
+}
+
+export interface TaskMetricsInput {
+  impressions: number;
+  clicks: number;
+  conversions: number;
+  revenue_cents: number;
 }
 
 const ALLOWED: TaskStatus[] = [...TASK_STATUSES];
@@ -47,7 +61,7 @@ export const formatTime = (iso: string | null) =>
   iso ? new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) : "—";
 
 export const TASK_SELECT =
-  "id, task_title, channel, campaign_name, status, scheduled_at, sent_at, created_at, updated_at, notes, asset_id";
+  "id, task_title, channel, campaign_name, status, scheduled_at, sent_at, created_at, updated_at, notes, asset_id, linked_offer_id, impressions, clicks, conversions, revenue_cents";
 
 const CHECKLIST_ITEMS = [
   { key: "copy", label: "Copy prepared" },
