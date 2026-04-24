@@ -99,7 +99,9 @@ const OfferHistory = () => {
           .eq("engine_key", "offer"),
         supabase
           .from("distribution_tasks")
-          .select("id, task_title, channel, status, scheduled_at, asset_id"),
+          .select(
+            "id, task_title, channel, status, scheduled_at, asset_id, campaign_name, impressions, clicks, conversions, revenue_cents, linked_offer_id",
+          ),
       ]);
       if (cancelled) return;
       const firstError =
