@@ -17,7 +17,9 @@ const items = [
   { title: "Engines", url: "/engines", icon: Sparkles },
   { title: "Assets", url: "/assets", icon: Layers },
   { title: "Distribution", url: "/distribution", icon: Send },
-  { title: "Settings", url: "/settings", icon: SettingsIcon },
+  { title: "Settings", url: "/settings", icon: SettingsIcon, end: true },
+  { title: "Account", url: "/settings/account", icon: SettingsIcon },
+  { title: "Workspace", url: "/settings/workspace", icon: SettingsIcon },
 ];
 
 export function DashboardSidebar() {
