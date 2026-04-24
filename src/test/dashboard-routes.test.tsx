@@ -8,14 +8,12 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { DashboardLayout } from "@/components/layouts/DashboardLayout";
 
 import DashboardOverview from "@/pages/dashboard/DashboardOverview";
-import Curriculum from "@/pages/dashboard/Curriculum";
-import Studio from "@/pages/dashboard/Studio";
-import AdEngine from "@/pages/dashboard/AdEngine";
-import Templates from "@/pages/dashboard/Templates";
-import Community from "@/pages/dashboard/Community";
-import Support from "@/pages/dashboard/Support";
+import Engines from "@/pages/dashboard/Engines";
+import OfferEngine from "@/pages/dashboard/OfferEngine";
+import Assets from "@/pages/dashboard/Assets";
+import Distribution from "@/pages/dashboard/Distribution";
+import Settings from "@/pages/dashboard/Settings";
 
-// Seed the stub auth provider as a signed-in member before each render.
 const STORAGE_KEY = "ethinx.auth.stub";
 
 function seedMember() {
@@ -39,12 +37,11 @@ function renderAt(path: string) {
               }
             >
               <Route path="/dashboard" element={<DashboardOverview />} />
-              <Route path="/dashboard/curriculum" element={<Curriculum />} />
-              <Route path="/dashboard/studio" element={<Studio />} />
-              <Route path="/dashboard/adengine" element={<AdEngine />} />
-              <Route path="/dashboard/templates" element={<Templates />} />
-              <Route path="/dashboard/community" element={<Community />} />
-              <Route path="/dashboard/support" element={<Support />} />
+              <Route path="/engines" element={<Engines />} />
+              <Route path="/engines/offer" element={<OfferEngine />} />
+              <Route path="/assets" element={<Assets />} />
+              <Route path="/distribution" element={<Distribution />} />
+              <Route path="/settings" element={<Settings />} />
             </Route>
           </Routes>
         </MemoryRouter>
@@ -54,26 +51,23 @@ function renderAt(path: string) {
 }
 
 const SIDEBAR_LINKS = [
-  "Overview",
-  "Curriculum",
-  "Neon Studio",
-  "Ad Engine",
-  "Email Templates",
-  "Community",
-  "Support",
+  "Dashboard",
+  "Engines",
+  "Assets",
+  "Distribution",
+  "Settings",
 ];
 
 const ROUTES: { path: string; heading: RegExp }[] = [
-  { path: "/dashboard", heading: /Growth Hub/i },
-  { path: "/dashboard/curriculum", heading: /Curriculum/i },
-  { path: "/dashboard/studio", heading: /Neon Studio/i },
-  { path: "/dashboard/adengine", heading: /Ad Engine/i },
-  { path: "/dashboard/templates", heading: /Email Templates/i },
-  { path: "/dashboard/community", heading: /Community/i },
-  { path: "/dashboard/support", heading: /^Support$/i },
+  { path: "/dashboard", heading: /^Dashboard$/i },
+  { path: "/engines", heading: /^Engines$/i },
+  { path: "/engines/offer", heading: /Offer Engine/i },
+  { path: "/assets", heading: /^Assets$/i },
+  { path: "/distribution", heading: /^Distribution$/i },
+  { path: "/settings", heading: /^Settings$/i },
 ];
 
-describe("Member dashboard routes", () => {
+describe("Member workspace routes", () => {
   let errorSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
@@ -90,18 +84,14 @@ describe("Member dashboard routes", () => {
   it.each(ROUTES)("renders %s with sidebar and no console errors", async ({ path, heading }) => {
     renderAt(path);
 
-    // Page heading renders
     expect(await screen.findByRole("heading", { name: heading })).toBeInTheDocument();
 
-    // Sidebar shows all member links (use getAllByText since responsive sidebar may render duplicates)
     for (const label of SIDEBAR_LINKS) {
       expect(screen.getAllByText(label).length).toBeGreaterThan(0);
     }
 
-    // Header label
-    expect(screen.getAllByText(/ETHINX · Member/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/ETHINX · Workspace/i).length).toBeGreaterThan(0);
 
-    // No React render errors logged
     expect(errorSpy).not.toHaveBeenCalled();
   });
 });

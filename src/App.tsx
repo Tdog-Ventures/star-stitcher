@@ -13,7 +13,7 @@ import { PublicLayout } from "@/components/layouts/PublicLayout";
 import { DashboardLayout } from "@/components/layouts/DashboardLayout";
 import { AdminLayout } from "@/components/layouts/AdminLayout";
 
-// Public
+// Public (marketing/showcase layer — preserved from the stitch)
 import Index from "./pages/Index";
 import Showcase from "./pages/public/Showcase";
 import Partners from "./pages/public/Partners";
@@ -26,16 +26,15 @@ import Signup from "./pages/auth/Signup";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import ResetPassword from "./pages/auth/ResetPassword";
 
-// Member
+// Member workspace — Offer + Distribution Engine
 import DashboardOverview from "./pages/dashboard/DashboardOverview";
-import Curriculum from "./pages/dashboard/Curriculum";
-import Studio from "./pages/dashboard/Studio";
-import AdEngine from "./pages/dashboard/AdEngine";
-import Templates from "./pages/dashboard/Templates";
-import Community from "./pages/dashboard/Community";
-import Support from "./pages/dashboard/Support";
+import Engines from "./pages/dashboard/Engines";
+import OfferEngine from "./pages/dashboard/OfferEngine";
+import Assets from "./pages/dashboard/Assets";
+import Distribution from "./pages/dashboard/Distribution";
+import Settings from "./pages/dashboard/Settings";
 
-// Admin
+// Admin (Command Center — preserved from the stitch)
 import CommandBoard from "./pages/admin/CommandBoard";
 import Clients from "./pages/admin/Clients";
 import Deployments from "./pages/admin/Deployments";
@@ -75,7 +74,7 @@ const App = () => (
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
 
-              {/* Member dashboard */}
+              {/* Member workspace (Offer + Distribution Engine) */}
               <Route
                 element={
                   <ProtectedRoute requireRole="member">
@@ -84,12 +83,11 @@ const App = () => (
                 }
               >
                 <Route path="/dashboard" element={<DashboardOverview />} />
-                <Route path="/dashboard/curriculum" element={<Curriculum />} />
-                <Route path="/dashboard/studio" element={<Studio />} />
-                <Route path="/dashboard/adengine" element={<AdEngine />} />
-                <Route path="/dashboard/templates" element={<Templates />} />
-                <Route path="/dashboard/community" element={<Community />} />
-                <Route path="/dashboard/support" element={<Support />} />
+                <Route path="/engines" element={<Engines />} />
+                <Route path="/engines/offer" element={<OfferEngine />} />
+                <Route path="/assets" element={<Assets />} />
+                <Route path="/distribution" element={<Distribution />} />
+                <Route path="/settings" element={<Settings />} />
               </Route>
 
               {/* Admin command center */}

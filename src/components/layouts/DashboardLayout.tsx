@@ -20,7 +20,7 @@ export function DashboardLayout() {
             <div className="flex items-center gap-2">
               <SidebarTrigger />
               <Link to="/dashboard" className="text-sm font-semibold">
-                ETHINX · Member
+                ETHINX · Workspace
               </Link>
             </div>
             <div className="flex items-center gap-2">
