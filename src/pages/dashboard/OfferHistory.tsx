@@ -241,6 +241,15 @@ const OfferHistory = () => {
       description="Every offer you've saved, with the assets and distribution tasks they fed into."
       actions={
         <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExport}
+            disabled={offers.length === 0}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Export CSV
+          </Button>
           <Button asChild variant="outline" size="sm">
             <Link to="/engines/offer">
               <ArrowLeft className="mr-2 h-4 w-4" />
