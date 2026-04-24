@@ -104,6 +104,7 @@ const App = () => (
                 }
               >
                 <Route path="/admin" element={<CommandBoard />} />
+                <Route path="/admin/performance" element={<AdminPerformance />} />
                 <Route path="/admin/clients" element={<Clients />} />
                 <Route path="/admin/deployments" element={<Deployments />} />
                 <Route path="/admin/agents" element={<Agents />} />
