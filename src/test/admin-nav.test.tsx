@@ -105,7 +105,7 @@ describe("Admin sidebar navigation", () => {
 
   afterEach(() => {
     cleanup();
-    localStorage.clear();
+    globalThis.__TEST_AUTH__ = null;
     errorSpy.mockRestore();
   });
 
