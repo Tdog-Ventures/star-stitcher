@@ -369,4 +369,64 @@ const DashboardOverview = () => {
   );
 };
 
+interface RecentItem {
+  id: string;
+  primary: string;
+  secondary: string;
+  status?: EngineStatus;
+}
+
+interface RecentListProps {
+  title: string;
+  icon: React.ComponentType<{ className?: string }>;
+  items: RecentItem[];
+  emptyTo: string;
+  emptyLabel: string;
+  viewAllTo: string;
+}
+
+const RecentList = ({ title, icon: Icon, items, emptyTo, emptyLabel, viewAllTo }: RecentListProps) => (
+  <Card>
+    <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+      <CardTitle className="flex items-center gap-2 text-sm font-semibold text-foreground">
+        <Icon className="h-4 w-4 text-muted-foreground" />
+        {title}
+      </CardTitle>
+      {items.length > 0 ? (
+        <Link
+          to={viewAllTo}
+          className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+        >
+          View all
+        </Link>
+      ) : null}
+    </CardHeader>
+    <CardContent>
+      {items.length === 0 ? (
+        <div className="rounded-md border border-dashed border-border bg-muted/30 p-4 text-center">
+          <p className="text-xs text-muted-foreground">Nothing here yet.</p>
+          <Button asChild variant="link" size="sm" className="h-auto p-0 text-xs">
+            <Link to={emptyTo}>
+              {emptyLabel}
+              <ArrowRight className="ml-1 h-3 w-3" />
+            </Link>
+          </Button>
+        </div>
+      ) : (
+        <ul className="divide-y divide-border">
+          {items.map((it) => (
+            <li key={it.id} className="flex items-start justify-between gap-3 py-2 first:pt-0 last:pb-0">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-foreground">{it.primary}</p>
+                <p className="truncate text-xs text-muted-foreground">{it.secondary}</p>
+              </div>
+              {it.status ? <StatusBadge status={it.status} /> : null}
+            </li>
+          ))}
+        </ul>
+      )}
+    </CardContent>
+  </Card>
+);
+
 export default DashboardOverview;
