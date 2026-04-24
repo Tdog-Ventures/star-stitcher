@@ -276,48 +276,144 @@ const OfferHistory = () => {
           </p>
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {offers.map((o) => {
-            const linkedAssets = assetsByOffer.get(o.id) ?? [];
-            const linkedTasks = tasksForOffer(o.id);
-            const status = (o.status || "draft") as EngineStatus;
-            return (
-              <button
-                key={o.id}
-                type="button"
-                onClick={() => setSelectedId(o.id)}
-                className="group flex flex-col gap-3 rounded-lg border border-border bg-card p-4 text-left shadow-sm transition hover:border-primary/40 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      {o.product_name ?? "—"}
-                    </p>
-                    <h3 className="mt-1 truncate text-sm font-semibold text-foreground group-hover:text-primary">
-                      {o.title}
-                    </h3>
+        <div className="space-y-6">
+          {showComparison ? (
+            <div className="grid gap-3 lg:grid-cols-2">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                    Top offers by revenue
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {offerComparison.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No offer-linked tasks yet.</p>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Offer</TableHead>
+                          <TableHead className="text-right">Tasks</TableHead>
+                          <TableHead className="text-right">CTR</TableHead>
+                          <TableHead className="text-right">Revenue</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {offerComparison.map((g) => (
+                          <TableRow
+                            key={g.key}
+                            className="cursor-pointer"
+                            onClick={() => setSelectedId(g.key)}
+                          >
+                            <TableCell className="font-medium text-foreground truncate max-w-[200px]">
+                              {offerTitleFor(g.key)}
+                            </TableCell>
+                            <TableCell className="text-right text-muted-foreground">
+                              {g.totals.taskCount}
+                            </TableCell>
+                            <TableCell className="text-right text-muted-foreground">
+                              {g.totals.impressions > 0 ? formatPct(g.totals.ctr) : "—"}
+                            </TableCell>
+                            <TableCell className="text-right text-foreground">
+                              {formatCents(g.totals.revenue_cents)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                    Top campaigns by revenue
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {campaignComparison.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No campaigns logged yet.</p>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Campaign</TableHead>
+                          <TableHead className="text-right">Tasks</TableHead>
+                          <TableHead className="text-right">Conv. rate</TableHead>
+                          <TableHead className="text-right">Revenue</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {campaignComparison.map((g) => (
+                          <TableRow key={g.key}>
+                            <TableCell className="font-medium text-foreground truncate max-w-[200px]">
+                              {g.key}
+                            </TableCell>
+                            <TableCell className="text-right text-muted-foreground">
+                              {g.totals.taskCount}
+                            </TableCell>
+                            <TableCell className="text-right text-muted-foreground">
+                              {g.totals.clicks > 0 ? formatPct(g.totals.conversionRate) : "—"}
+                            </TableCell>
+                            <TableCell className="text-right text-foreground">
+                              {formatCents(g.totals.revenue_cents)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          ) : null}
+
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {offers.map((o) => {
+              const linkedAssets = assetsByOffer.get(o.id) ?? [];
+              const linkedTasks = tasksForOffer(o.id);
+              const status = (o.status || "draft") as EngineStatus;
+              return (
+                <button
+                  key={o.id}
+                  type="button"
+                  onClick={() => setSelectedId(o.id)}
+                  className="group flex flex-col gap-3 rounded-lg border border-border bg-card p-4 text-left shadow-sm transition hover:border-primary/40 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        {o.product_name ?? "—"}
+                      </p>
+                      <h3 className="mt-1 truncate text-sm font-semibold text-foreground group-hover:text-primary">
+                        {o.title}
+                      </h3>
+                    </div>
+                    <StatusBadge status={status} />
                   </div>
-                  <StatusBadge status={status} />
-                </div>
-                {o.desired_outcome ? (
-                  <p className="line-clamp-2 text-xs text-muted-foreground">
-                    {o.desired_outcome}
-                  </p>
-                ) : null}
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                  <span className="inline-flex items-center gap-1">
-                    <Layers className="h-3 w-3" />
-                    {linkedAssets.length} asset{linkedAssets.length === 1 ? "" : "s"}
-                  </span>
-                  <span className="inline-flex items-center gap-1">
-                    <Send className="h-3 w-3" />
-                    {linkedTasks.length} task{linkedTasks.length === 1 ? "" : "s"}
-                  </span>
-                  <span className="ml-auto">{formatDate(o.created_at)}</span>
-                </div>
-              </button>
-            );
-          })}
+                  {o.desired_outcome ? (
+                    <p className="line-clamp-2 text-xs text-muted-foreground">
+                      {o.desired_outcome}
+                    </p>
+                  ) : null}
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                    <span className="inline-flex items-center gap-1">
+                      <Layers className="h-3 w-3" />
+                      {linkedAssets.length} asset{linkedAssets.length === 1 ? "" : "s"}
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <Send className="h-3 w-3" />
+                      {linkedTasks.length} task{linkedTasks.length === 1 ? "" : "s"}
+                    </span>
+                    <span className="ml-auto">{formatDate(o.created_at)}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
