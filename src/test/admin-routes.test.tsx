@@ -55,6 +55,7 @@ function renderAt(path: string) {
 
 const SIDEBAR_LINKS = [
   "Command Board",
+  "Performance",
   "Clients",
   "Deployments",
   "Agents",
@@ -67,6 +68,7 @@ const SIDEBAR_LINKS = [
 
 const ROUTES: { path: string; heading: RegExp }[] = [
   { path: "/admin", heading: /Command Board/i },
+  { path: "/admin/performance", heading: /Performance Board/i },
   { path: "/admin/clients", heading: /^Clients$/i },
   { path: "/admin/deployments", heading: /Deployments/i },
   { path: "/admin/agents", heading: /Agents/i },
