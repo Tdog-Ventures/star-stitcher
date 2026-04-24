@@ -48,6 +48,8 @@ import {
   isAllowedStatus,
   useDistributionTasks,
 } from "@/lib/distribution-tasks";
+import { markCsvExported } from "@/lib/onboarding";
+import { useAuth } from "@/providers/AuthProvider";
 
 type FilterValue = "all" | TaskStatus;
 
@@ -61,6 +63,7 @@ const FILTERS: { value: FilterValue; label: string }[] = [
 ];
 
 const Distribution = () => {
+  const { user } = useAuth();
   const {
     rows,
     loading,
@@ -126,6 +129,7 @@ const Distribution = () => {
     const csv = tasksToCsv(filteredRows);
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
     downloadCsv(`distribution-tasks-${stamp}.csv`, csv);
+    markCsvExported(user?.id);
   };
 
   return (

@@ -33,6 +33,7 @@ import {
   rankByOffer,
   type PerfTask,
 } from "@/lib/performance";
+import { markCsvExported } from "@/lib/onboarding";
 
 interface OfferRow {
   id: string;
@@ -233,6 +234,7 @@ const OfferHistory = () => {
     }
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
     downloadCsv(`offer-history-${stamp}.csv`, lines.join("\n"));
+    markCsvExported(user?.id);
   };
 
   return (
