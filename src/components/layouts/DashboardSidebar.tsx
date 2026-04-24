@@ -1,4 +1,4 @@
-import { LayoutDashboard, BookOpen, Sparkles, Megaphone, Mail, Users, LifeBuoy } from "lucide-react";
+import { LayoutDashboard, Sparkles, Layers, Send, Settings as SettingsIcon } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar,
@@ -13,13 +13,11 @@ import {
 } from "@/components/ui/sidebar";
 
 const items = [
-  { title: "Overview", url: "/dashboard", icon: LayoutDashboard, end: true },
-  { title: "Curriculum", url: "/dashboard/curriculum", icon: BookOpen },
-  { title: "Neon Studio", url: "/dashboard/studio", icon: Sparkles },
-  { title: "Ad Engine", url: "/dashboard/adengine", icon: Megaphone },
-  { title: "Email Templates", url: "/dashboard/templates", icon: Mail },
-  { title: "Community", url: "/dashboard/community", icon: Users },
-  { title: "Support", url: "/dashboard/support", icon: LifeBuoy },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, end: true },
+  { title: "Engines", url: "/engines", icon: Sparkles },
+  { title: "Assets", url: "/assets", icon: Layers },
+  { title: "Distribution", url: "/distribution", icon: Send },
+  { title: "Settings", url: "/settings", icon: SettingsIcon },
 ];
 
 export function DashboardSidebar() {
@@ -30,7 +28,7 @@ export function DashboardSidebar() {
     <Sidebar collapsible="icon">
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Member</SidebarGroupLabel>
+          <SidebarGroupLabel>Workspace</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => (
