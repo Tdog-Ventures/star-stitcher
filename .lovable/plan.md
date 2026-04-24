@@ -70,11 +70,18 @@ Each gets its own page file importing its original components, namespaced under 
 - **`/login`**, **`/signup`**, **`/forgot-password`**, **`/reset-password`** -- Unified auth pages
 - Supabase integration for auth + archetype_results storage
 
-### Phase 4: Member Dashboard
-- **`/dashboard`** -- Creator Growth Hub (stats, progress, week content, ad engine, community, support, email templates)
-- **`/dashboard/curriculum`** -- Creator Blueprint curriculum view
-- **`/dashboard/studio`** -- Neon Studio video generation tool
-- **`/dashboard/adengine`**, **`/dashboard/templates`**, **`/dashboard/community`**, **`/dashboard/support`** -- Growth Hub sub-pages
+### Phase 4: Member workspace — Offer + Distribution Engine ✅ shell complete
+The member area is the real SaaS product (manual-first, AI-second), NOT a port of Growth Hub/Blueprint/Neon Studio.
+
+- **`/dashboard`** — Workspace overview (stats, shortcuts, empty state)
+- **`/engines`** — List of available engines (Offer Engine live, others "soon")
+- **`/engines/offer`** — Offer Engine: structured form + live preview + save-as-asset
+- **`/assets`** — AssetTable of all saved offers/posts (empty until persistence lands)
+- **`/distribution`** — Distribution planner (empty until persistence lands)
+- **`/settings`** — Profile, theme, sign out
+
+Reusable primitives in `src/components/engine/`: EngineLayout, FormSection, PreviewCard, AssetTable, StatusBadge.
+Retired stitch pages (Curriculum, Studio, AdEngine, Templates, Community, member Support) — removed.
 
 ### Phase 5: Admin Panel
 - **`/admin`** -- Command Board
