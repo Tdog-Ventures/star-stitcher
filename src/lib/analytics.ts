@@ -3,7 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 export type AnalyticsEvent =
   | "offer_saved"
   | "asset_created"
-  | "distribution_task_created";
+  | "distribution_task_created"
+  | "distribution_task_ready";
 
 export async function trackEvent(
   event: AnalyticsEvent,
