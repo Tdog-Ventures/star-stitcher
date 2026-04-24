@@ -1,10 +1,14 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Save, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/providers/AuthProvider";
+import { trackEvent } from "@/lib/analytics";
 import {
   EngineLayout,
   FormSection,
@@ -41,7 +45,10 @@ const EMPTY: OfferFields = {
 
 const OfferEngine = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [fields, setFields] = useState<OfferFields>(EMPTY);
+  const [saving, setSaving] = useState(false);
 
   const set = <K extends keyof OfferFields>(key: K, value: OfferFields[K]) =>
     setFields((prev) => ({ ...prev, [key]: value }));
@@ -54,14 +61,63 @@ const OfferEngine = () => {
     [fields],
   );
 
-  const handleSave = () => {
-    if (!isComplete) return;
-    toast({
-      title: "Saved as draft",
-      description:
-        "Persistence will activate when Lovable Cloud is enabled. Output is preserved in this session.",
+  const handleSave = async () => {
+    if (!isComplete || !user) return;
+    setSaving(true);
+    const { data: offer, error: offerErr } = await supabase
+      .from("offers")
+      .insert({
+        user_id: user.id,
+        title: fields.title,
+        product_name: fields.productName,
+        target_audience: fields.targetAudience || null,
+        main_problem: fields.mainProblem || null,
+        desired_outcome: fields.desiredOutcome || null,
+        differentiator: fields.differentiator || null,
+        proof: fields.proof || null,
+        pricing: fields.pricing || null,
+        urgency: fields.urgency || null,
+        guarantee: fields.guarantee || null,
+        cta: fields.cta,
+        source_type: "manual",
+        status: "draft",
+      })
+      .select()
+      .single();
+
+    if (offerErr || !offer) {
+      setSaving(false);
+      toast({ title: "Save failed", description: offerErr?.message, variant: "destructive" });
+      return;
+    }
+
+    await trackEvent("offer_saved", { offer_id: offer.id });
+
+    const { error: assetErr } = await supabase.from("assets").insert({
+      user_id: user.id,
+      engine_key: "offer",
+      source_record_id: offer.id,
+      title: offer.title,
+      content: [
+        offer.product_name && `Product: ${offer.product_name}`,
+        offer.desired_outcome && `Outcome: ${offer.desired_outcome}`,
+        offer.cta && `CTA: ${offer.cta}`,
+      ].filter(Boolean).join("\n"),
+      status: "draft",
     });
+
+    setSaving(false);
+    if (assetErr) {
+      toast({ title: "Offer saved, asset failed", description: assetErr.message, variant: "destructive" });
+      return;
+    }
+
+    await trackEvent("asset_created", { source: "offer", offer_id: offer.id });
+    toast({ title: "Saved", description: "Offer and asset created." });
+    setFields(EMPTY);
+    navigate("/assets");
   };
+
 
   return (
     <EngineLayout
