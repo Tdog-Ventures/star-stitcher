@@ -1,15 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Award, CalendarDays, List as ListIcon, Plus, TrendingUp } from "lucide-react";
+import { Award, CalendarDays, Download, List as ListIcon, Plus, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import {
+  buildRecommendations,
   computeTotals,
+  downloadCsv,
+  filterTasks,
   formatCents,
   formatPct,
   hasPerformanceData,
+  PERF_SORT_OPTIONS,
+  type PerfSortKey,
   rankByChannel,
   rankByOffer,
+  sortTasks,
+  tasksToCsv,
 } from "@/lib/performance";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,8 +36,9 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EngineLayout } from "@/components/engine";
+import { RecommendationsPanel } from "@/components/engine/RecommendationsPanel";
 import { StatusBadge, type EngineStatus } from "@/components/engine/StatusBadge";
-import { TASK_STATUSES, type TaskStatus } from "@/lib/distribution";
+import { CHANNELS, TASK_STATUSES, type TaskStatus } from "@/lib/distribution";
 import {
   EmptyState,
   SummaryCard,
@@ -67,14 +75,22 @@ const Distribution = () => {
   } = useDistributionTasks();
 
   const [filter, setFilter] = useState<FilterValue>("all");
+  const [channelFilter, setChannelFilter] = useState<string>("all");
+  const [sortKey, setSortKey] = useState<PerfSortKey>("scheduled");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [offerTitles, setOfferTitles] = useState<Record<string, string>>({});
 
   const summary = useMemo(() => computeSummary(rows), [rows]);
-  const filteredRows = useMemo(
-    () => (filter === "all" ? rows : rows.filter((r) => r.status === filter)),
-    [rows, filter],
-  );
+
+  const filteredRows = useMemo(() => {
+    const base = filterTasks(rows, {
+      status: filter,
+      channel: channelFilter,
+    });
+    return sortTasks(base, sortKey, sortDir);
+  }, [rows, filter, channelFilter, sortKey, sortDir]);
+
   const selectedTask = useMemo(
     () => rows.find((r) => r.id === selectedId) ?? null,
     [rows, selectedId],
@@ -85,6 +101,7 @@ const Distribution = () => {
   const channelLeader = useMemo(() => rankByChannel(rows)[0] ?? null, [rows]);
   const offerLeader = useMemo(() => rankByOffer(rows)[0] ?? null, [rows]);
   const showPerf = hasPerformanceData(rows);
+  const recommendations = useMemo(() => buildRecommendations(rows), [rows]);
 
   // Resolve offer titles for the "best offer" card
   useEffect(() => {
@@ -105,6 +122,12 @@ const Distribution = () => {
     };
   }, [offerLeader?.key, offerTitles]);
 
+  const handleExport = () => {
+    const csv = tasksToCsv(filteredRows);
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    downloadCsv(`distribution-tasks-${stamp}.csv`, csv);
+  };
+
   return (
     <EngineLayout
       title="Distribution"
@@ -123,6 +146,15 @@ const Distribution = () => {
               </Link>
             </Button>
           </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleExport}
+            disabled={filteredRows.length === 0}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Export CSV
+          </Button>
           <Button asChild size="sm">
             <Link to="/assets">
               <Plus className="mr-2 h-4 w-4" />
@@ -198,15 +230,56 @@ const Distribution = () => {
           </div>
         ) : null}
 
-        <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterValue)}>
-          <TabsList className="flex-wrap">
-            {FILTERS.map((f) => (
-              <TabsTrigger key={f.value} value={f.value}>
-                {f.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+        <RecommendationsPanel recommendations={recommendations} />
+
+        <div className="flex flex-wrap items-center gap-3">
+          <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterValue)}>
+            <TabsList className="flex-wrap">
+              {FILTERS.map((f) => (
+                <TabsTrigger key={f.value} value={f.value}>
+                  {f.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <Select value={channelFilter} onValueChange={setChannelFilter}>
+              <SelectTrigger className="w-[150px] h-9">
+                <SelectValue placeholder="Channel" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All channels</SelectItem>
+                {CHANNELS.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {c}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={sortKey} onValueChange={(v) => setSortKey(v as PerfSortKey)}>
+              <SelectTrigger className="w-[170px] h-9">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                {PERF_SORT_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>
+                    Sort by {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-9"
+              onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))}
+              aria-label="Toggle sort direction"
+            >
+              {sortDir === "desc" ? "↓ Desc" : "↑ Asc"}
+            </Button>
+          </div>
+        </div>
 
         {loading ? (
           <div className="rounded-lg border border-dashed border-border bg-card p-10 text-center text-sm text-muted-foreground">
@@ -231,11 +304,11 @@ const Distribution = () => {
           />
         ) : filteredRows.length === 0 ? (
           <EmptyState
-            title={`No ${filter} tasks`}
+            title="No tasks match these filters"
             body={
               <>
-                Nothing matches this filter right now. Switch to <strong>All</strong> to see every
-                task or try a different status.
+                Nothing matches the current status + channel combo. Switch to <strong>All</strong>{" "}
+                or pick a different channel.
               </>
             }
           />
@@ -248,6 +321,8 @@ const Distribution = () => {
                   <TableHead className="hidden md:table-cell">Campaign</TableHead>
                   <TableHead>Channel</TableHead>
                   <TableHead className="hidden lg:table-cell">Scheduled</TableHead>
+                  <TableHead className="hidden xl:table-cell text-right">Revenue</TableHead>
+                  <TableHead className="hidden xl:table-cell text-right">CTR</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -255,6 +330,7 @@ const Distribution = () => {
               <TableBody>
                 {filteredRows.map((r) => {
                   const status = isAllowedStatus(r.status) ? r.status : "draft";
+                  const ctr = r.impressions > 0 ? r.clicks / r.impressions : 0;
                   return (
                     <TableRow
                       key={r.id}
@@ -268,6 +344,12 @@ const Distribution = () => {
                       <TableCell className="text-muted-foreground">{r.channel}</TableCell>
                       <TableCell className="hidden lg:table-cell text-muted-foreground">
                         {formatDateTime(r.scheduled_at)}
+                      </TableCell>
+                      <TableCell className="hidden xl:table-cell text-right text-muted-foreground">
+                        {r.revenue_cents > 0 ? formatCents(r.revenue_cents) : "—"}
+                      </TableCell>
+                      <TableCell className="hidden xl:table-cell text-right text-muted-foreground">
+                        {r.impressions > 0 ? formatPct(ctr) : "—"}
                       </TableCell>
                       <TableCell>
                         <StatusBadge status={status as EngineStatus} />

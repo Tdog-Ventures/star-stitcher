@@ -8,6 +8,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AdminLayout } from "@/components/layouts/AdminLayout";
 
 import CommandBoard from "@/pages/admin/CommandBoard";
+import AdminPerformance from "@/pages/admin/AdminPerformance";
 import Clients from "@/pages/admin/Clients";
 import Deployments from "@/pages/admin/Deployments";
 import Agents from "@/pages/admin/Agents";
@@ -35,6 +36,7 @@ function renderAt(path: string) {
               }
             >
               <Route path="/admin" element={<CommandBoard />} />
+              <Route path="/admin/performance" element={<AdminPerformance />} />
               <Route path="/admin/clients" element={<Clients />} />
               <Route path="/admin/deployments" element={<Deployments />} />
               <Route path="/admin/agents" element={<Agents />} />
@@ -53,6 +55,7 @@ function renderAt(path: string) {
 
 const SIDEBAR_LINKS = [
   "Command Board",
+  "Performance",
   "Clients",
   "Deployments",
   "Agents",
@@ -65,6 +68,7 @@ const SIDEBAR_LINKS = [
 
 const ROUTES: { path: string; heading: RegExp }[] = [
   { path: "/admin", heading: /Command Board/i },
+  { path: "/admin/performance", heading: /Performance Board/i },
   { path: "/admin/clients", heading: /^Clients$/i },
   { path: "/admin/deployments", heading: /Deployments/i },
   { path: "/admin/agents", heading: /Agents/i },

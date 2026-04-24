@@ -38,6 +38,7 @@ import Settings from "./pages/dashboard/Settings";
 
 // Admin (Command Center — preserved from the stitch)
 import CommandBoard from "./pages/admin/CommandBoard";
+import AdminPerformance from "./pages/admin/AdminPerformance";
 import Clients from "./pages/admin/Clients";
 import Deployments from "./pages/admin/Deployments";
 import Agents from "./pages/admin/Agents";
@@ -103,6 +104,7 @@ const App = () => (
                 }
               >
                 <Route path="/admin" element={<CommandBoard />} />
+                <Route path="/admin/performance" element={<AdminPerformance />} />
                 <Route path="/admin/clients" element={<Clients />} />
                 <Route path="/admin/deployments" element={<Deployments />} />
                 <Route path="/admin/agents" element={<Agents />} />

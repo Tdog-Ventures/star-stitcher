@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, FileText, Layers, Send } from "lucide-react";
+import { ArrowLeft, BarChart3, Download, FileText, Layers, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Sheet,
   SheetContent,
@@ -10,11 +11,28 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/providers/AuthProvider";
 import { EngineLayout } from "@/components/engine";
 import { StatusBadge, type EngineStatus } from "@/components/engine/StatusBadge";
+import {
+  downloadCsv,
+  formatCents,
+  formatPct,
+  hasPerformanceData,
+  rankByCampaign,
+  rankByOffer,
+  type PerfTask,
+} from "@/lib/performance";
 
 interface OfferRow {
   id: string;
@@ -43,6 +61,12 @@ interface TaskLite {
   status: string;
   scheduled_at: string | null;
   asset_id: string | null;
+  campaign_name: string | null;
+  impressions: number;
+  clicks: number;
+  conversions: number;
+  revenue_cents: number;
+  linked_offer_id: string | null;
 }
 
 const formatDate = (iso: string | null) =>
@@ -75,7 +99,9 @@ const OfferHistory = () => {
           .eq("engine_key", "offer"),
         supabase
           .from("distribution_tasks")
-          .select("id, task_title, channel, status, scheduled_at, asset_id"),
+          .select(
+            "id, task_title, channel, status, scheduled_at, asset_id, campaign_name, impressions, clicks, conversions, revenue_cents, linked_offer_id",
+          ),
       ]);
       if (cancelled) return;
       const firstError =
@@ -128,12 +154,102 @@ const OfferHistory = () => {
   const selectedAssets = selected ? assetsByOffer.get(selected.id) ?? [] : [];
   const selectedTasks = selected ? tasksForOffer(selected.id) : [];
 
+  // Build PerfTask list with linked_offer_id resolved through asset → offer
+  const perfTasks = useMemo<PerfTask[]>(() => {
+    const assetToOffer = new Map<string, string>();
+    for (const a of assets) {
+      if (a.source_record_id) assetToOffer.set(a.id, a.source_record_id);
+    }
+    return tasks.map((t) => ({
+      id: t.id,
+      channel: t.channel,
+      status: t.status,
+      impressions: t.impressions ?? 0,
+      clicks: t.clicks ?? 0,
+      conversions: t.conversions ?? 0,
+      revenue_cents: t.revenue_cents ?? 0,
+      campaign_name: t.campaign_name,
+      task_title: t.task_title,
+      scheduled_at: t.scheduled_at,
+      linked_offer_id:
+        t.linked_offer_id ?? (t.asset_id ? assetToOffer.get(t.asset_id) ?? null : null),
+    }));
+  }, [tasks, assets]);
+
+  const offerTitleFor = (id: string) =>
+    offers.find((o) => o.id === id)?.title ?? "Unknown offer";
+
+  const offerComparison = useMemo(
+    () => rankByOffer(perfTasks).slice(0, 5),
+    [perfTasks],
+  );
+  const campaignComparison = useMemo(
+    () => rankByCampaign(perfTasks).slice(0, 5),
+    [perfTasks],
+  );
+  const showComparison = hasPerformanceData(perfTasks);
+
+  const handleExport = () => {
+    const headers = [
+      "offer_id",
+      "offer_title",
+      "asset_count",
+      "task_count",
+      "impressions",
+      "clicks",
+      "conversions",
+      "revenue_cents",
+    ];
+    const lines = [headers.join(",")];
+    const esc = (v: unknown) => {
+      const s = v === null || v === undefined ? "" : String(v);
+      return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    for (const o of offers) {
+      const linkedTasks = tasksForOffer(o.id);
+      const totals = linkedTasks.reduce(
+        (acc, t) => ({
+          impressions: acc.impressions + (t.impressions ?? 0),
+          clicks: acc.clicks + (t.clicks ?? 0),
+          conversions: acc.conversions + (t.conversions ?? 0),
+          revenue_cents: acc.revenue_cents + (t.revenue_cents ?? 0),
+        }),
+        { impressions: 0, clicks: 0, conversions: 0, revenue_cents: 0 },
+      );
+      lines.push(
+        [
+          o.id,
+          o.title,
+          (assetsByOffer.get(o.id) ?? []).length,
+          linkedTasks.length,
+          totals.impressions,
+          totals.clicks,
+          totals.conversions,
+          totals.revenue_cents,
+        ]
+          .map(esc)
+          .join(","),
+      );
+    }
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    downloadCsv(`offer-history-${stamp}.csv`, lines.join("\n"));
+  };
+
   return (
     <EngineLayout
       title="Offer History"
       description="Every offer you've saved, with the assets and distribution tasks they fed into."
       actions={
         <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExport}
+            disabled={offers.length === 0}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Export CSV
+          </Button>
           <Button asChild variant="outline" size="sm">
             <Link to="/engines/offer">
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -160,48 +276,144 @@ const OfferHistory = () => {
           </p>
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {offers.map((o) => {
-            const linkedAssets = assetsByOffer.get(o.id) ?? [];
-            const linkedTasks = tasksForOffer(o.id);
-            const status = (o.status || "draft") as EngineStatus;
-            return (
-              <button
-                key={o.id}
-                type="button"
-                onClick={() => setSelectedId(o.id)}
-                className="group flex flex-col gap-3 rounded-lg border border-border bg-card p-4 text-left shadow-sm transition hover:border-primary/40 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      {o.product_name ?? "—"}
-                    </p>
-                    <h3 className="mt-1 truncate text-sm font-semibold text-foreground group-hover:text-primary">
-                      {o.title}
-                    </h3>
+        <div className="space-y-6">
+          {showComparison ? (
+            <div className="grid gap-3 lg:grid-cols-2">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                    Top offers by revenue
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {offerComparison.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No offer-linked tasks yet.</p>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Offer</TableHead>
+                          <TableHead className="text-right">Tasks</TableHead>
+                          <TableHead className="text-right">CTR</TableHead>
+                          <TableHead className="text-right">Revenue</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {offerComparison.map((g) => (
+                          <TableRow
+                            key={g.key}
+                            className="cursor-pointer"
+                            onClick={() => setSelectedId(g.key)}
+                          >
+                            <TableCell className="font-medium text-foreground truncate max-w-[200px]">
+                              {offerTitleFor(g.key)}
+                            </TableCell>
+                            <TableCell className="text-right text-muted-foreground">
+                              {g.totals.taskCount}
+                            </TableCell>
+                            <TableCell className="text-right text-muted-foreground">
+                              {g.totals.impressions > 0 ? formatPct(g.totals.ctr) : "—"}
+                            </TableCell>
+                            <TableCell className="text-right text-foreground">
+                              {formatCents(g.totals.revenue_cents)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                    Top campaigns by revenue
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {campaignComparison.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No campaigns logged yet.</p>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Campaign</TableHead>
+                          <TableHead className="text-right">Tasks</TableHead>
+                          <TableHead className="text-right">Conv. rate</TableHead>
+                          <TableHead className="text-right">Revenue</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {campaignComparison.map((g) => (
+                          <TableRow key={g.key}>
+                            <TableCell className="font-medium text-foreground truncate max-w-[200px]">
+                              {g.key}
+                            </TableCell>
+                            <TableCell className="text-right text-muted-foreground">
+                              {g.totals.taskCount}
+                            </TableCell>
+                            <TableCell className="text-right text-muted-foreground">
+                              {g.totals.clicks > 0 ? formatPct(g.totals.conversionRate) : "—"}
+                            </TableCell>
+                            <TableCell className="text-right text-foreground">
+                              {formatCents(g.totals.revenue_cents)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          ) : null}
+
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {offers.map((o) => {
+              const linkedAssets = assetsByOffer.get(o.id) ?? [];
+              const linkedTasks = tasksForOffer(o.id);
+              const status = (o.status || "draft") as EngineStatus;
+              return (
+                <button
+                  key={o.id}
+                  type="button"
+                  onClick={() => setSelectedId(o.id)}
+                  className="group flex flex-col gap-3 rounded-lg border border-border bg-card p-4 text-left shadow-sm transition hover:border-primary/40 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        {o.product_name ?? "—"}
+                      </p>
+                      <h3 className="mt-1 truncate text-sm font-semibold text-foreground group-hover:text-primary">
+                        {o.title}
+                      </h3>
+                    </div>
+                    <StatusBadge status={status} />
                   </div>
-                  <StatusBadge status={status} />
-                </div>
-                {o.desired_outcome ? (
-                  <p className="line-clamp-2 text-xs text-muted-foreground">
-                    {o.desired_outcome}
-                  </p>
-                ) : null}
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                  <span className="inline-flex items-center gap-1">
-                    <Layers className="h-3 w-3" />
-                    {linkedAssets.length} asset{linkedAssets.length === 1 ? "" : "s"}
-                  </span>
-                  <span className="inline-flex items-center gap-1">
-                    <Send className="h-3 w-3" />
-                    {linkedTasks.length} task{linkedTasks.length === 1 ? "" : "s"}
-                  </span>
-                  <span className="ml-auto">{formatDate(o.created_at)}</span>
-                </div>
-              </button>
-            );
-          })}
+                  {o.desired_outcome ? (
+                    <p className="line-clamp-2 text-xs text-muted-foreground">
+                      {o.desired_outcome}
+                    </p>
+                  ) : null}
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                    <span className="inline-flex items-center gap-1">
+                      <Layers className="h-3 w-3" />
+                      {linkedAssets.length} asset{linkedAssets.length === 1 ? "" : "s"}
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <Send className="h-3 w-3" />
+                      {linkedTasks.length} task{linkedTasks.length === 1 ? "" : "s"}
+                    </span>
+                    <span className="ml-auto">{formatDate(o.created_at)}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 

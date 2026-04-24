@@ -9,6 +9,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AdminLayout } from "@/components/layouts/AdminLayout";
 
 import CommandBoard from "@/pages/admin/CommandBoard";
+import AdminPerformance from "@/pages/admin/AdminPerformance";
 import Clients from "@/pages/admin/Clients";
 import Deployments from "@/pages/admin/Deployments";
 import Agents from "@/pages/admin/Agents";
@@ -36,6 +37,7 @@ function renderApp() {
               }
             >
               <Route path="/admin" element={<CommandBoard />} />
+              <Route path="/admin/performance" element={<AdminPerformance />} />
               <Route path="/admin/clients" element={<Clients />} />
               <Route path="/admin/deployments" element={<Deployments />} />
               <Route path="/admin/agents" element={<Agents />} />
@@ -53,6 +55,7 @@ function renderApp() {
 }
 
 const NAV_STEPS: { link: string; href: string; heading: RegExp }[] = [
+  { link: "Performance", href: "/admin/performance", heading: /Performance Board/i },
   { link: "Clients", href: "/admin/clients", heading: /^Clients$/i },
   { link: "Deployments", href: "/admin/deployments", heading: /Deployments/i },
   { link: "Agents", href: "/admin/agents", heading: /Agents/i },
@@ -66,6 +69,7 @@ const NAV_STEPS: { link: string; href: string; heading: RegExp }[] = [
 
 const SIDEBAR_LINKS = [
   "Command Board",
+  "Performance",
   "Clients",
   "Deployments",
   "Agents",
