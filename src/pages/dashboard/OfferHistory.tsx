@@ -234,6 +234,7 @@ const OfferHistory = () => {
     }
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
     downloadCsv(`offer-history-${stamp}.csv`, lines.join("\n"));
+    markCsvExported(user?.id);
   };
 
   return (
