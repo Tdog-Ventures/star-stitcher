@@ -129,6 +129,7 @@ const Distribution = () => {
     const csv = tasksToCsv(filteredRows);
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
     downloadCsv(`distribution-tasks-${stamp}.csv`, csv);
+    markCsvExported(user?.id);
   };
 
   return (
