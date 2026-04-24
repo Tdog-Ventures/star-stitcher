@@ -63,6 +63,7 @@ const FILTERS: { value: FilterValue; label: string }[] = [
 ];
 
 const Distribution = () => {
+  const { user } = useAuth();
   const {
     rows,
     loading,
