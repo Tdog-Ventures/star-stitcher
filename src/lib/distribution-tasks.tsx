@@ -197,6 +197,26 @@ export function useDistributionTasks() {
     load();
   };
 
+  const updateMetrics = async (id: string, metrics: TaskMetricsInput) => {
+    setUpdating(id);
+    const { error } = await supabase
+      .from("distribution_tasks")
+      .update({
+        impressions: Math.max(0, Math.floor(metrics.impressions || 0)),
+        clicks: Math.max(0, Math.floor(metrics.clicks || 0)),
+        conversions: Math.max(0, Math.floor(metrics.conversions || 0)),
+        revenue_cents: Math.max(0, Math.floor(metrics.revenue_cents || 0)),
+      })
+      .eq("id", id);
+    setUpdating(null);
+    if (error) {
+      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Metrics saved" });
+    load();
+  };
+
   return {
     rows,
     loading,
@@ -205,6 +225,7 @@ export function useDistributionTasks() {
     reload: load,
     changeStatus,
     markReady,
+    updateMetrics,
     checklistFor,
     toggleChecklist,
     isChecklistComplete,
