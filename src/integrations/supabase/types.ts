@@ -14,16 +14,264 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      analytics_events: {
+        Row: {
+          created_at: string
+          event_name: string
+          id: string
+          properties: Json | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_name: string
+          id?: string
+          properties?: Json | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_name?: string
+          id?: string
+          properties?: Json | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      assets: {
+        Row: {
+          channel: string | null
+          content: string | null
+          created_at: string
+          engine_key: string
+          id: string
+          source_record_id: string | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          channel?: string | null
+          content?: string | null
+          created_at?: string
+          engine_key?: string
+          id?: string
+          source_record_id?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          channel?: string | null
+          content?: string | null
+          created_at?: string
+          engine_key?: string
+          id?: string
+          source_record_id?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      distribution_tasks: {
+        Row: {
+          asset_id: string | null
+          channel: string
+          created_at: string
+          id: string
+          linked_offer_id: string | null
+          notes: string | null
+          scheduled_at: string | null
+          sent_at: string | null
+          status: string
+          task_content: string | null
+          task_title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          asset_id?: string | null
+          channel: string
+          created_at?: string
+          id?: string
+          linked_offer_id?: string | null
+          notes?: string | null
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string
+          task_content?: string | null
+          task_title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          asset_id?: string | null
+          channel?: string
+          created_at?: string
+          id?: string
+          linked_offer_id?: string | null
+          notes?: string | null
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string
+          task_content?: string | null
+          task_title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "distribution_tasks_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "distribution_tasks_linked_offer_id_fkey"
+            columns: ["linked_offer_id"]
+            isOneToOne: false
+            referencedRelation: "offers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      offers: {
+        Row: {
+          benefit_bullets: Json | null
+          created_at: string
+          cta: string | null
+          description: string | null
+          desired_outcome: string | null
+          differentiator: string | null
+          guarantee: string | null
+          id: string
+          main_problem: string | null
+          offer_stack: string | null
+          positioning: string | null
+          pricing: string | null
+          product_name: string | null
+          proof: string | null
+          source_type: string | null
+          status: string
+          target_audience: string | null
+          title: string
+          updated_at: string
+          urgency: string | null
+          user_id: string
+        }
+        Insert: {
+          benefit_bullets?: Json | null
+          created_at?: string
+          cta?: string | null
+          description?: string | null
+          desired_outcome?: string | null
+          differentiator?: string | null
+          guarantee?: string | null
+          id?: string
+          main_problem?: string | null
+          offer_stack?: string | null
+          positioning?: string | null
+          pricing?: string | null
+          product_name?: string | null
+          proof?: string | null
+          source_type?: string | null
+          status?: string
+          target_audience?: string | null
+          title: string
+          updated_at?: string
+          urgency?: string | null
+          user_id: string
+        }
+        Update: {
+          benefit_bullets?: Json | null
+          created_at?: string
+          cta?: string | null
+          description?: string | null
+          desired_outcome?: string | null
+          differentiator?: string | null
+          guarantee?: string | null
+          id?: string
+          main_problem?: string | null
+          offer_stack?: string | null
+          positioning?: string | null
+          pricing?: string | null
+          product_name?: string | null
+          proof?: string | null
+          source_type?: string | null
+          status?: string
+          target_audience?: string | null
+          title?: string
+          updated_at?: string
+          urgency?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          full_name: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "member" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +398,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "member", "user"],
+    },
   },
 } as const
