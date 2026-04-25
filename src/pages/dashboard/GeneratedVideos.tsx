@@ -195,6 +195,11 @@ const GeneratedVideos = () => {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewAsset, setPreviewAsset] = useState<AssetRecord | null>(null);
 
+  // render integration (FacelessForge — currently STUB)
+  const [polling, setPolling] = useState<Set<string>>(new Set());
+  const [renderingNow, setRenderingNow] = useState<Set<string>>(new Set());
+  const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
   const load = async () => {
     if (!user) return;
     setLoading(true);
