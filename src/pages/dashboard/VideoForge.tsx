@@ -71,6 +71,7 @@ const VideoForge = () => {
   const [output, setOutput] = useState<VideoForgeOutput | null>(null);
   const [saving, setSaving] = useState(false);
   const [savedAssetId, setSavedAssetId] = useState<string | null>(null);
+  const [validationIssues, setValidationIssues] = useState<VideoForgeValidationIssue[]>([]);
 
   const set = <K extends keyof VideoForgeInput>(key: K, value: VideoForgeInput[K]) =>
     setFields((prev) => ({ ...prev, [key]: value }));
@@ -81,6 +82,7 @@ const VideoForge = () => {
     if (!canGenerate || !user) return;
     setSaving(true);
     setSavedAssetId(null);
+    setValidationIssues([]);
 
     const result = generateVideoForge(fields);
     setOutput(result);
@@ -90,9 +92,10 @@ const VideoForge = () => {
     const validation = validateVideoForgeOutput(result);
     if (!validation.ok) {
       setSaving(false);
+      setValidationIssues(validation.issues);
       toast({
         title: "Video plan is incomplete — not saved",
-        description: validation.errors.slice(0, 4).join(" · "),
+        description: `${validation.issues.length} issue${validation.issues.length === 1 ? "" : "s"} found. See the validation panel below.`,
         variant: "destructive",
       });
       return;
