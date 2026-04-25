@@ -249,6 +249,136 @@ const GeneratedVideos = () => {
     setPreviewOpen(true);
   };
 
+  // ---------------------------------------------------------------------------
+  // FacelessForge render integration (STUB)
+  //
+  // The /videos page never calls FacelessForge directly. It always invokes
+  // our edge functions, which act as the proxy boundary. While the secret
+  // FACELESSFORGE_API_KEY is unset / "stub-not-connected", those edge functions
+  // return fake data and never write a video URL onto the asset — so this UI
+  // can never claim an MP4 exists.
+  // ---------------------------------------------------------------------------
+
+  // Resume polling for any in-flight jobs after a page reload.
+  useEffect(() => {
+    if (!rows.length) return;
+    setPolling((prev) => {
+      const next = new Set(prev);
+      for (const r of rows) {
+        if (r.render_job_id && !r.rendered_video_url) next.add(r.id);
+      }
+      return next;
+    });
+  }, [rows]);
+
+  // Single interval that polls every in-flight job, stops when none are left.
+  useEffect(() => {
+    if (polling.size === 0) {
+      if (pollTimer.current) {
+        clearInterval(pollTimer.current);
+        pollTimer.current = null;
+      }
+      return;
+    }
+    if (pollTimer.current) return; // already running
+    pollTimer.current = setInterval(async () => {
+      const ids = Array.from(polling);
+      for (const id of ids) {
+        const row = rows.find((r) => r.id === id);
+        if (!row?.render_job_id) {
+          setPolling((p) => {
+            const n = new Set(p);
+            n.delete(id);
+            return n;
+          });
+          continue;
+        }
+        const { data, error } = await supabase.functions.invoke("render-video-status", {
+          body: { job_id: row.render_job_id, asset_id: row.id },
+        });
+        if (error) continue;
+        const status = (data as { status?: string } | null)?.status;
+        if (status === "completed" || status === "failed") {
+          setPolling((p) => {
+            const n = new Set(p);
+            n.delete(id);
+            return n;
+          });
+          // Re-load the asset so any new rendered_video_url surfaces.
+          await load();
+        }
+      }
+    }, 5000);
+    return () => {
+      if (pollTimer.current) {
+        clearInterval(pollTimer.current);
+        pollTimer.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [polling.size]);
+
+  const handleRender = async (rec: AssetRecord, meta: VideoForgeMeta) => {
+    if (!user) return;
+    if (renderingNow.has(rec.id)) return;
+    setRenderingNow((s) => new Set(s).add(rec.id));
+
+    // Pull structured fields out of the envelope to send to FacelessForge.
+    const env = tryParseEnvelope(rec.content);
+    const out = (env?.output ?? {}) as Record<string, unknown>;
+    const sceneBreakdown = Array.isArray(out.scene_breakdown) ? (out.scene_breakdown as unknown[]) : [];
+    const stockTerms = Array.isArray(out.stock_footage_terms) ? (out.stock_footage_terms as unknown[]) : [];
+    const voiceoverNotes = out.voiceover_notes ?? null;
+
+    const { data, error } = await supabase.functions.invoke("render-video", {
+      body: {
+        asset_id: rec.id,
+        title: rec.title,
+        script: meta.fullScript,
+        scene_breakdown: sceneBreakdown,
+        stock_footage_terms: stockTerms,
+        captions: {
+          short_caption: meta.shortCaption,
+          long_caption: meta.longCaption,
+        },
+        voiceover_notes: voiceoverNotes,
+      },
+    });
+
+    setRenderingNow((s) => {
+      const n = new Set(s);
+      n.delete(rec.id);
+      return n;
+    });
+
+    if (error) {
+      toast({
+        title: "Render request failed",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+    const payload = (data ?? {}) as { job_id?: string; stub?: boolean };
+    if (!payload.job_id) {
+      toast({
+        title: "No job_id returned",
+        description: "FacelessForge did not return a job id.",
+        variant: "destructive",
+      });
+      return;
+    }
+    toast({
+      title: payload.stub ? "Render queued (stub)" : "Render queued",
+      description: payload.stub
+        ? "Stub mode — no MP4 will be produced. Real FacelessForge API not connected yet."
+        : `Job ${payload.job_id}`,
+    });
+    setPolling((p) => new Set(p).add(rec.id));
+    await load();
+  };
+
+
   const submit = async () => {
     if (!user || !selected) return;
     const parsed = distributeFormSchema.safeParse({
