@@ -206,3 +206,72 @@ describe("video-forge validator", () => {
   });
 });
 
+describe("video-forge speakability", () => {
+  it("freshly generated narration contains no instructional verbs at sentence start", () => {
+    (["short_form", "long_form", "faceless", "product_demo"] as VideoMode[]).forEach((mode) => {
+      const out = generateVideoForge({ ...baseInput, mode });
+      const v = validateVideoForgeOutput(out);
+      expect(v.ok, `mode=${mode} errors=${v.errors.join(" | ")}`).toBe(true);
+    });
+  });
+
+  it("flags narration that starts with Explain / Discuss / Show / Introduce", () => {
+    const out = generateVideoForge(baseInput);
+    const broken = {
+      ...out,
+      script_sections: {
+        ...out.script_sections,
+        intro: "Explain why this matters to founders.",
+        problem: "Discuss the failure mode in depth.",
+      },
+      scene_breakdown: [
+        { ...out.scene_breakdown[0], narration: "Show the dashboard with the key metric." },
+        { ...out.scene_breakdown[1], narration: "Introduce the three-step plan." },
+        ...out.scene_breakdown.slice(2),
+      ],
+    };
+    const v = validateVideoForgeOutput(broken);
+    expect(v.ok).toBe(false);
+    expect(v.errors.some((e) => e.includes("explain"))).toBe(true);
+    expect(v.errors.some((e) => e.includes("discuss"))).toBe(true);
+    expect(v.errors.some((e) => e.includes("show"))).toBe(true);
+    expect(v.errors.some((e) => e.includes("introduce"))).toBe(true);
+  });
+
+  it("does NOT flag the same verbs used naturally inside a sentence", () => {
+    const out = generateVideoForge(baseInput);
+    const ok = {
+      ...out,
+      script_sections: {
+        ...out.script_sections,
+        insight: "I'll show you what changed when I flipped one thing.",
+      },
+    };
+    const v = validateVideoForgeOutput(ok);
+    expect(v.ok).toBe(true);
+  });
+
+  it("flags bracketed stage directions left inside narration", () => {
+    const out = generateVideoForge(baseInput);
+    const broken = {
+      ...out,
+      script_sections: {
+        ...out.script_sections,
+        intro: "[Cold open over B-roll] If you're a founder, this matters.",
+      },
+    };
+    const v = validateVideoForgeOutput(broken);
+    expect(v.ok).toBe(false);
+    expect(v.errors.some((e) => e.includes("stage direction"))).toBe(true);
+  });
+
+  it("hooks are at most two lines and avoid 'stop scrolling' clichés", () => {
+    (["short_form", "long_form", "faceless", "product_demo"] as VideoMode[]).forEach((mode) => {
+      const out = generateVideoForge({ ...baseInput, mode });
+      const lineCount = out.opening_hook.split(/\n/).filter(Boolean).length;
+      expect(lineCount, `mode=${mode}`).toBeLessThanOrEqual(2);
+      expect(out.opening_hook.toLowerCase()).not.toContain("stop scrolling");
+    });
+  });
+});
+
