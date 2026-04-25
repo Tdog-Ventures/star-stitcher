@@ -130,7 +130,12 @@ export interface ScriptSections {
 
 export interface SceneBreakdownItem {
   scene_number: number;
+  /** Start timecode, m:ss. */
   timecode: string;
+  /** End timecode, m:ss (additive — same shape as `timecode`). */
+  end_timecode?: string;
+  /** Approximate scene duration in seconds (additive). */
+  duration_seconds?: number;
   scene_purpose: string;
   narration: string;
   suggested_visual: string;
