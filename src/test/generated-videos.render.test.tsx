@@ -149,7 +149,7 @@ const renderPage = () =>
     </MemoryRouter>,
   );
 
-describe("GeneratedVideos — FacelessForge render integration (stub)", () => {
+describe("GeneratedVideos — FacelessForge render integration (live)", () => {
   beforeEach(() => {
     h.invokeMock.mockReset();
     h.sampleAsset.render_job_id = null;
@@ -157,16 +157,10 @@ describe("GeneratedVideos — FacelessForge render integration (stub)", () => {
     h.sampleAsset.render_status = null;
   });
 
-  it("shows the stub banner so users know no MP4 is produced", async () => {
-    renderPage();
-    expect(await screen.findByTestId("render-stub-banner")).toBeInTheDocument();
-    expect(screen.getByText(/Render integration stub/i)).toBeInTheDocument();
-  });
-
   it("invokes render-video with the full payload when clicked", async () => {
     const user = userEvent.setup();
     h.invokeMock.mockResolvedValueOnce({
-      data: { job_id: "stub_xyz", status: "pending", stub: true },
+      data: { job_id: "ff_xyz", render_job_id: "ff_xyz", status: "queued" },
       error: null,
     });
 
@@ -190,26 +184,38 @@ describe("GeneratedVideos — FacelessForge render integration (stub)", () => {
     expect(Array.isArray(opts.body.scene_breakdown)).toBe(true);
   });
 
-  it("never shows Download MP4 in stub mode (rendered_video_url stays null)", async () => {
-    h.sampleAsset.render_job_id = "stub_persisted";
+  it("shows the Rendering… button while a job is in flight (no MP4 yet)", async () => {
+    h.sampleAsset.render_job_id = "ff_inflight";
+    h.sampleAsset.render_status = "queued";
     h.sampleAsset.rendered_video_url = null;
     h.invokeMock.mockResolvedValue({
-      data: { job_id: "stub_persisted", status: "completed", video_url: null, stub: true },
+      data: { job_id: "ff_inflight", status: "running", video_url: null },
       error: null,
     });
 
     renderPage();
     expect(await screen.findByTestId("render-pending")).toBeInTheDocument();
     expect(screen.queryByTestId("download-mp4")).not.toBeInTheDocument();
-    expect(screen.getByTestId("render-stub-banner")).toBeInTheDocument();
   });
 
   it("shows Download MP4 only once rendered_video_url is populated", async () => {
-    h.sampleAsset.render_job_id = "real_job";
+    h.sampleAsset.render_job_id = "ff_done";
+    h.sampleAsset.render_status = "completed";
     h.sampleAsset.rendered_video_url = "https://cdn.example.com/video.mp4";
 
     renderPage();
     const link = await screen.findByTestId("download-mp4");
     expect(link).toHaveAttribute("href", "https://cdn.example.com/video.mp4");
   });
+
+  it("shows a Retry render button when the job failed", async () => {
+    h.sampleAsset.render_job_id = "ff_broken";
+    h.sampleAsset.render_status = "failed";
+    h.sampleAsset.rendered_video_url = null;
+
+    renderPage();
+    expect(await screen.findByTestId("render-retry")).toBeInTheDocument();
+    expect(screen.getByText(/Render failed\. Try again\./i)).toBeInTheDocument();
+  });
 });
+
