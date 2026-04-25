@@ -35,6 +35,7 @@ const ResetPassword = lazy(() => import("./pages/auth/ResetPassword"));
 const DashboardOverview = lazy(() => import("./pages/dashboard/DashboardOverview"));
 const Engines = lazy(() => import("./pages/dashboard/Engines"));
 const OfferEngine = lazy(() => import("./pages/dashboard/OfferEngine"));
+const VideoForge = lazy(() => import("./pages/dashboard/VideoForge"));
 const OfferHistory = lazy(() => import("./pages/dashboard/OfferHistory"));
 const Assets = lazy(() => import("./pages/dashboard/Assets"));
 const Distribution = lazy(() => import("./pages/dashboard/Distribution"));
@@ -108,6 +109,7 @@ const App = () => (
                 >
                   <Route path="/dashboard" element={<DashboardOverview />} />
                   <Route path="/engines" element={<Engines />} />
+                  <Route path="/engines/video-forge" element={<VideoForge />} />
                   <Route path="/engines/offer" element={<OfferEngine />} />
                   <Route path="/engines/offer/history" element={<OfferHistory />} />
                   <Route path="/assets" element={<Assets />} />
