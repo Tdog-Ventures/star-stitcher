@@ -260,6 +260,32 @@ const VideoForge = () => {
         </div>
       </FormSection>
 
+      <FormSection title="Output mode" description="Pick the kind of script you want generated.">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2 sm:col-span-2">
+            <Label htmlFor="mode">Mode</Label>
+            <Select
+              value={fields.mode ?? "short_form"}
+              onValueChange={(v) => set("mode", v as VideoMode)}
+            >
+              <SelectTrigger id="mode">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(Object.keys(MODE_LABELS) as VideoMode[]).map((m) => (
+                  <SelectItem key={m} value={m}>
+                    {MODE_LABELS[m]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Short-form, long-form YouTube, faceless, or product demo. Each mode changes the hook, scene plan, voiceover notes, and success metric.
+            </p>
+          </div>
+        </div>
+      </FormSection>
+
       <FormSection title="Format & style" description="Where it runs and how it feels.">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
