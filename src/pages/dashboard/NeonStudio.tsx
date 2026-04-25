@@ -1,45 +1,61 @@
 import { StubEngine } from "@/components/engine/StubEngine";
+import {
+  formatSceneBrief,
+  generateSceneBrief,
+  PLATFORM_LABELS,
+  STYLE_LABELS,
+  type Platform,
+  type VisualStyle,
+} from "@/lib/engines/neon-studio";
 
 const NeonStudio = () => (
   <StubEngine
     engineKey="neon_studio"
     assetType="visual-brief"
     title="Neon Studio"
-    description="Visual brief for thumbnails, covers, and hero graphics."
-    intro="Structured brief a designer (or you) can execute in minutes."
+    description="Scene direction for thumbnails, reels, and hero shots — sized to the platform."
+    intro="Output: shot list, composition, motion, on-screen text, and platform spec."
     sample={{
-      subject: "Cold email playbook — thumbnail",
-      mood: "High contrast, dark background, neon-cyan accent",
-      text: "STOP SENDING COLD EMAIL",
-      format: "16:9 thumbnail",
+      visualStyle: "neon-cyberpunk" satisfies VisualStyle,
+      scene: "Founder typing into a glowing terminal at 2am, city out of focus behind",
+      platform: "tiktok" satisfies Platform,
     }}
     fields={[
-      { key: "subject", label: "What is this for?", placeholder: "Thumbnail, hero, ad creative…" },
-      { key: "mood", label: "Mood / style", placeholder: "Colors, contrast, vibe" },
-      { key: "text", label: "On-image text", placeholder: "≤ 5 words" },
-      { key: "format", label: "Format / ratio", placeholder: "1:1, 16:9, 9:16…" },
+      {
+        key: "visualStyle",
+        label: "Visual style",
+        options: (Object.keys(STYLE_LABELS) as VisualStyle[]).map((k) => ({
+          value: k,
+          label: STYLE_LABELS[k],
+        })),
+      },
+      {
+        key: "scene",
+        label: "Scene idea",
+        placeholder: "Describe the moment you want to capture",
+        textarea: true,
+        required: true,
+      },
+      {
+        key: "platform",
+        label: "Platform",
+        options: (Object.keys(PLATFORM_LABELS) as Platform[]).map((k) => ({
+          value: k,
+          label: PLATFORM_LABELS[k],
+        })),
+      },
     ]}
-    buildTitle={(v) => `Neon: ${v.subject || "Untitled brief"}`}
-    buildContent={(v) =>
-      [
-        `SUBJECT: ${v.subject}`,
-        `FORMAT: ${v.format}`,
-        "",
-        `MOOD: ${v.mood}`,
-        "",
-        `ON-IMAGE TEXT: "${v.text}"`,
-        "",
-        "COMPOSITION:",
-        "- Subject left-third, text right-third",
-        "- One dominant focal point",
-        "- Negative space for platform UI overlay",
-        "",
-        "CONSTRAINTS:",
-        "- Max 5 words on-image",
-        "- Readable at thumbnail size (≤ 320px wide)",
-        "- One accent color only",
-      ].join("\n")
+    buildTitle={(v) =>
+      `Scene: ${(v.scene || "Untitled").slice(0, 60)}${v.scene && v.scene.length > 60 ? "…" : ""}`
     }
+    buildContent={(v) => {
+      const input = {
+        visualStyle: v.visualStyle as VisualStyle,
+        scene: v.scene,
+        platform: v.platform as Platform,
+      };
+      return formatSceneBrief(input, generateSceneBrief(input));
+    }}
   />
 );
 
