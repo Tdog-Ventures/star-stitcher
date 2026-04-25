@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   generateVideoForge,
   formatVideoForge,
+  validateVideoForgeOutput,
   type VideoForgeInput,
   type VideoMode,
 } from "@/lib/video-forge";
