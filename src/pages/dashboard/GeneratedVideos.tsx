@@ -1,12 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
+  AlertTriangle,
   Download,
   Eye,
   FileText,
   Film,
+  Loader2,
   Plus,
   Send,
+  Sparkles,
   Subtitles,
   Video as VideoIcon,
 } from "lucide-react";
@@ -48,6 +51,8 @@ import {
 } from "@/components/engine";
 import { tryParseEnvelope } from "@/lib/engines/contracts";
 
+import { deriveRenderUi } from "@/lib/render-state";
+
 interface AssetRecord {
   id: string;
   title: string;
@@ -58,6 +63,9 @@ interface AssetRecord {
   created_at: string;
   updated_at: string;
   content: string | null;
+  render_job_id: string | null;
+  rendered_video_url: string | null;
+  render_status: string | null;
 }
 
 interface TaskLite {
