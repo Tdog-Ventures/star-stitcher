@@ -30,6 +30,7 @@ import {
   validateVideoForgeOutput,
   type VideoForgeInput,
   type VideoForgeOutput,
+  type VideoForgeValidationIssue,
   type VideoFormat,
   type VideoGoal,
   type VideoLength,
