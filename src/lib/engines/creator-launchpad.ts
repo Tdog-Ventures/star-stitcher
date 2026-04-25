@@ -151,5 +151,15 @@ export function formatLaunchPlan(input: LaunchpadInput, plan: LaunchPlan): strin
     "",
     "RISK FLAGS",
     ...plan.riskFlags.map((r, i) => `${i + 1}. ${r}`),
+    formatFooter({
+      nextSteps: [
+        `Stand up the waitlist page today (one-pager, one CTA, no nav).`,
+        `Write the Day-1 "promise" sentence and pin it where you'll see it daily.`,
+        `Block the launch-window dates on your calendar — protect them like meetings.`,
+        `Draft the launch-day post + waitlist email tonight; queue them.`,
+      ],
+      distribution: `Pre-launch: own audience + 1 paid channel for waitlist. Launch day: every owned channel within 1 hour, then drip 1 post / day. Post-launch: recap on long-form first, then short-form.`,
+      successMetric: plan.successMetric,
+    }),
   ].join("\n");
 }
