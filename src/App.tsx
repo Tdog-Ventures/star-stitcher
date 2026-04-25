@@ -45,6 +45,7 @@ const GrowthHub = lazy(() => import("./pages/dashboard/GrowthHub"));
 const ShowcaseEngine = lazy(() => import("./pages/dashboard/ShowcaseEngine"));
 const OfferHistory = lazy(() => import("./pages/dashboard/OfferHistory"));
 const Assets = lazy(() => import("./pages/dashboard/Assets"));
+const GeneratedVideos = lazy(() => import("./pages/dashboard/GeneratedVideos"));
 const Distribution = lazy(() => import("./pages/dashboard/Distribution"));
 const DistributionCalendar = lazy(() => import("./pages/dashboard/DistributionCalendar"));
 const Settings = lazy(() => import("./pages/dashboard/Settings"));
@@ -127,6 +128,7 @@ const App = () => (
                   <Route path="/engines/offer" element={<OfferEngine />} />
                   <Route path="/engines/offer/history" element={<OfferHistory />} />
                   <Route path="/assets" element={<Assets />} />
+                  <Route path="/videos" element={<GeneratedVideos />} />
                   <Route path="/distribution" element={<Distribution />} />
                   <Route path="/distribution/calendar" element={<DistributionCalendar />} />
                   <Route path="/settings" element={<Settings />} />
