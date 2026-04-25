@@ -155,15 +155,30 @@ function renderByEngine(
 function renderVideoForge(o: Record<string, unknown>) {
   const sections = (o.script_sections ?? {}) as Record<string, string>;
   const captions = (o.captions ?? {}) as Record<string, string>;
+  const fullScript = asString(o.full_script);
+  const stock = asArray<string>(o.stock_footage_terms);
+  const overlays = asArray<string>(o.on_screen_text_overlays);
+  const voNotes = asArray<string>(o.voiceover_notes);
+  const mode = asString(o.mode);
   return (
     <>
       <Section title="Title">
-        <Paragraph>{asString(o.video_title) || "—"}</Paragraph>
+        <Paragraph>
+          {asString(o.video_title) || "—"}
+          {mode ? <span className="ml-2 text-xs text-muted-foreground">({mode.replace(/_/g, " ")})</span> : null}
+        </Paragraph>
       </Section>
       <Section title="Hook">
         <Paragraph>{asString(o.opening_hook) || "—"}</Paragraph>
       </Section>
-      <Section title="Script">
+      {fullScript ? (
+        <Section title="Full script">
+          <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-md border border-border bg-muted/30 p-2 text-xs">
+            {fullScript}
+          </pre>
+        </Section>
+      ) : null}
+      <Section title="Script sections">
         <div className="space-y-2">
           {(["intro", "problem", "insight", "proof", "solution", "cta"] as const).map(
             (k) =>
@@ -178,6 +193,21 @@ function renderVideoForge(o: Record<string, unknown>) {
           )}
         </div>
       </Section>
+      {stock.length ? (
+        <Section title="Stock / B-roll search terms">
+          <BulletList items={stock} />
+        </Section>
+      ) : null}
+      {overlays.length ? (
+        <Section title="On-screen overlays">
+          <BulletList items={overlays} />
+        </Section>
+      ) : null}
+      {voNotes.length ? (
+        <Section title="Voiceover notes">
+          <BulletList items={voNotes} />
+        </Section>
+      ) : null}
       <Section title="CTA">
         <Paragraph>{sections.cta || asString(captions.short_caption) || "—"}</Paragraph>
       </Section>
