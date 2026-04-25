@@ -1,5 +1,6 @@
 // Neon Studio — turns visual style + scene idea + platform
 // into a directable visual brief / scene direction.
+import { formatFooter } from "./output-footer";
 
 export type VisualStyle =
   | "neon-cyberpunk"
@@ -152,5 +153,15 @@ export function formatSceneBrief(input: NeonInput, dir: SceneDirection): string 
     "",
     "DO NOT",
     ...dir.doNot.map((d, i) => `${i + 1}. ${d}`),
+    formatFooter({
+      nextSteps: [
+        `Lock location + props before camera (use the palette swatch as your shopping list).`,
+        `Light a test frame and screenshot — confirm the on-screen text is readable at thumbnail size.`,
+        `Shoot all 4 shots in one block; don't review until you're done with shot 4.`,
+        `Edit a single 5-second cut first to validate the rhythm before the full edit.`,
+      ],
+      distribution: `Native upload to ${PLATFORM_LABELS[input.platform]} in the ratio above. Burn captions in. Cross-post the hero frame as a still on adjacent platforms (no native repost).`,
+      successMetric: `Thumb-stop rate (3-second view %) ≥ platform median for ${PLATFORM_LABELS[input.platform]}. Track per-shot retention to learn which frame works.`,
+    }),
   ].join("\n");
 }

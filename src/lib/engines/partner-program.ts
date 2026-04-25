@@ -1,5 +1,6 @@
 // Partner Program — turns product + target partner + commission model
 // into a partner recruitment brief.
+import { formatFooter } from "./output-footer";
 
 export type CommissionModel =
   | "flat-fee"
@@ -125,5 +126,15 @@ export function formatPartnerBrief(input: PartnerInput, brief: PartnerBrief): st
     "",
     "GUARDRAILS",
     ...brief.guardrails.map((g, i) => `${i + 1}. ${g}`),
+    formatFooter({
+      nextSteps: [
+        `Build the partner one-pager today — focus on what success looks like in 30 days.`,
+        `Compile a list of 10 partners matching "${input.targetPartner || "the profile"}". Score each on audience fit (1–5).`,
+        `Start Step 1 (public engagement) on the top-3 this week. No ask, just visibility.`,
+        `Set up unique tracking links + a simple shared sheet to log conversations.`,
+      ],
+      distribution: `Outreach is 1:1, not broadcast. Send via the partner's preferred channel (most prefer email or DM, never cold InMail). Make the enablement kit a single shareable doc link.`,
+      successMetric: `≥ 30% reply rate at Step 2 (DM/email). 1 active partner per 10 contacted within 30 days. First partner-attributed conversion within 60 days.`,
+    }),
   ].join("\n");
 }

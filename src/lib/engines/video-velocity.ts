@@ -1,5 +1,6 @@
 // Video Velocity — turns batch topic + count + platform
 // into a per-video production plan for one filming session.
+import { formatFooter } from "./output-footer";
 
 export type VelocityPlatform = "tiktok" | "reels" | "shorts" | "linkedin" | "x";
 
@@ -27,19 +28,112 @@ const PLATFORM_HOOK_RULE: Record<VelocityPlatform, string> = {
   x: "First 4s must work without sound (autoplay muted).",
 };
 
-const ANGLES = [
-  { kind: "Mistake", template: (t: string) => `The #1 mistake people make about ${t}` },
-  { kind: "Contrarian", template: (t: string) => `Why the common advice on ${t} is wrong` },
-  { kind: "Framework", template: (t: string) => `A 3-step way to do ${t}` },
-  { kind: "Case study", template: (t: string) => `Real example of ${t} working` },
-  { kind: "Myth-bust", template: (t: string) => `The biggest myth about ${t}` },
-  { kind: "Shortcut", template: (t: string) => `One template that makes ${t} faster` },
-  { kind: "Recap", template: (t: string) => `Best lessons from this week on ${t}` },
-  { kind: "Behind-the-scenes", template: (t: string) => `How I actually run ${t}` },
-  { kind: "Q&A", template: (t: string) => `Answering the most-asked question about ${t}` },
-  { kind: "Prediction", template: (t: string) => `Where ${t} is going next` },
-  { kind: "Compare", template: (t: string) => `Old way vs new way to do ${t}` },
-  { kind: "Anti-pattern", template: (t: string) => `Things to STOP doing in ${t}` },
+interface AngleSpec {
+  kind: string;
+  hookPrefix: string;
+  title: (t: string) => string;
+  hook: (t: string) => string;
+  beat1: (t: string) => string;
+  beat2: (t: string) => string;
+}
+
+const ANGLES: AngleSpec[] = [
+  {
+    kind: "Mistake",
+    hookPrefix: "Stop.",
+    title: (t) => `The #1 mistake people make about ${t}`,
+    hook: (t) => `Stop. If you're trying ${t}, you're probably doing this wrong.`,
+    beat1: (t) => `Name the mistake explicitly: most people approach ${t} by [generic move]. It feels productive but moves zero metrics.`,
+    beat2: (t) => `Show what works instead in one sentence — and back it with one number you can prove.`,
+  },
+  {
+    kind: "Contrarian",
+    hookPrefix: "Hot take:",
+    title: (t) => `Why the common advice on ${t} is wrong`,
+    hook: (t) => `Hot take: the popular advice on ${t} is built for a different game than yours.`,
+    beat1: (t) => `Quote the common advice on ${t} verbatim. Then explain why the conditions it assumes don't apply to your audience.`,
+    beat2: (t) => `Offer the contrarian rule. State the trade-off honestly — when it doesn't work.`,
+  },
+  {
+    kind: "Framework",
+    hookPrefix: "Quick framework:",
+    title: (t) => `A 3-step way to do ${t}`,
+    hook: (t) => `Here's the 3-step way I run ${t} — copy it.`,
+    beat1: (t) => `Walk through steps 1–2 with one concrete artifact each (a line, a metric, a screenshot of ${t}).`,
+    beat2: (t) => `Step 3 + the failure mode at each step. End with the artifact a viewer should produce by tonight.`,
+  },
+  {
+    kind: "Case study",
+    hookPrefix: "Real example:",
+    title: (t) => `How [name] used ${t} to [result]`,
+    hook: (t) => `Real example: someone I know used ${t} to get a result most people don't believe.`,
+    beat1: (t) => `Set the scene: who, what they tried before, why it failed. Specific numbers > adjectives.`,
+    beat2: (t) => `What they changed about ${t} + the outcome with a date. Lesson the viewer can steal.`,
+  },
+  {
+    kind: "Myth-bust",
+    hookPrefix: "Myth:",
+    title: (t) => `The biggest myth about ${t}`,
+    hook: (t) => `The biggest lie about ${t} is the one nobody questions.`,
+    beat1: (t) => `State the myth in 1 line. Show where it came from (who benefits from people believing it about ${t}?).`,
+    beat2: (t) => `Replace it with the reality + one tactic that proves the new framing.`,
+  },
+  {
+    kind: "Shortcut",
+    hookPrefix: "Save 10 minutes:",
+    title: (t) => `One template that makes ${t} faster`,
+    hook: (t) => `Steal this template — it cuts ${t} time in half.`,
+    beat1: (t) => `Show the template on screen (text overlay). Walk through what each field does.`,
+    beat2: (t) => `Demo: fill it in live with a realistic ${t} example. Tell viewers where to grab it.`,
+  },
+  {
+    kind: "Recap",
+    hookPrefix: "Best of the week:",
+    title: (t) => `3 things I learned about ${t} this week`,
+    hook: (t) => `3 lessons from this week on ${t} — distilled.`,
+    beat1: (t) => `Lessons 1 & 2 with the source / context that produced each insight on ${t}.`,
+    beat2: (t) => `Lesson 3 + the one thing you're changing about ${t} next week.`,
+  },
+  {
+    kind: "Behind-the-scenes",
+    hookPrefix: "Inside look:",
+    title: (t) => `How I actually run ${t} day-to-day`,
+    hook: (t) => `What ${t} looks like behind the scenes — not the polished version.`,
+    beat1: (t) => `Show the messy artifact: the doc, the dashboard, the inbox you actually use for ${t}.`,
+    beat2: (t) => `One unglamorous habit that makes the whole system work. End on the trade-off you accept.`,
+  },
+  {
+    kind: "Q&A",
+    hookPrefix: "Most-asked Q:",
+    title: (t) => `The question I get most about ${t}`,
+    hook: (t) => `The single question I get most about ${t} — answered straight.`,
+    beat1: (t) => `Read the question verbatim. Reframe it: what they're really asking about ${t} is ____.`,
+    beat2: (t) => `Direct answer with one example. Invite a follow-up question in the comments.`,
+  },
+  {
+    kind: "Prediction",
+    hookPrefix: "Next 12 months:",
+    title: (t) => `Where ${t} is going in the next 12 months`,
+    hook: (t) => `Where ${t} goes next — and what to do today to be ready.`,
+    beat1: (t) => `One trend on ${t} you can show evidence for (data, anecdote, signal).`,
+    beat2: (t) => `Concrete action a viewer can take this week to position for that future.`,
+  },
+  {
+    kind: "Compare",
+    hookPrefix: "Old vs new:",
+    title: (t) => `Old way vs new way of doing ${t}`,
+    hook: (t) => `Old ${t} vs new ${t} — same goal, very different work.`,
+    beat1: (t) => `Show the old way of ${t} on screen. Be fair about what it got right.`,
+    beat2: (t) => `Show the new way + the specific situation where each one still wins.`,
+  },
+  {
+    kind: "Anti-pattern",
+    hookPrefix: "Stop doing:",
+    title: (t) => `3 things to STOP doing in ${t}`,
+    hook: (t) => `If you're doing ${t}, stop these 3 things first.`,
+    beat1: (t) => `Anti-patterns 1 & 2 in ${t}, with why each one feels right but fails.`,
+    beat2: (t) => `Anti-pattern 3 + the replacement habit. Make the swap concrete.`,
+  },
 ];
 
 export interface VelocityInput {
@@ -72,13 +166,13 @@ export function generateBatch(input: VelocityInput): VelocityBatch {
   const videos: VelocityVideo[] = selected.map((a, i) => ({
     index: i + 1,
     angle: a.kind,
-    workingTitle: a.template(topic),
-    hook: `${a.kind === "Mistake" ? "Stop." : a.kind === "Contrarian" ? "Hot take:" : "Quick one:"} ${a.template(topic).toLowerCase()}.`,
-    beat1: `Name it — be specific about ${topic}, no generic advice.`,
-    beat2: `Show it — give one concrete example or number tied to ${topic}.`,
+    workingTitle: a.title(topic),
+    hook: a.hook(topic),
+    beat1: a.beat1(topic),
+    beat2: a.beat2(topic),
     cta: i === count - 1
       ? `Follow for the full ${topic} series — DM "${topic}" for the playbook.`
-      : `Save this for later. Tomorrow: ${selected[i + 1]?.kind ?? "next angle"}.`,
+      : `Save this. Tomorrow: ${selected[i + 1]?.kind ?? "next angle"}.`,
   }));
 
   const minutesPerVideo = 12; // rough one-take + reset budget
@@ -127,5 +221,15 @@ export function formatBatch(input: VelocityInput, plan: VelocityBatch): string {
     "PUBLISH PLAN",
     `- Cadence: ${plan.publish.cadence}`,
     `- First post: ${plan.publish.firstPost}`,
+    formatFooter({
+      nextSteps: [
+        `Block 90 minutes on the calendar for the shoot — same outfit, same background.`,
+        `Pre-write the on-screen text overlay for each video (≤ 5 words each).`,
+        `Set up the camera and shoot all ${plan.videos.length} in one session, in roll order.`,
+        `Edit + caption #1 immediately; queue the rest at one per day.`,
+      ],
+      distribution: `Native upload to ${VELOCITY_PLATFORM_LABELS[input.platform]} at the same time slot daily. Cross-post the Mistake angle (#1) to a second platform after 48h to test transfer.`,
+      successMetric: `Median 3-second view rate ≥ 65% across the batch. Watch the angle that wins — that's next batch's spine.`,
+    }),
   ].join("\n");
 }

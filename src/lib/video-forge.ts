@@ -1,5 +1,6 @@
 // Deterministic, rule-based video script generator.
 // No AI calls — produces a structured script from form inputs.
+import { formatFooter } from "./engines/output-footer";
 
 export type VideoGoal =
   | "marketing"
@@ -206,5 +207,15 @@ export function formatScriptAsContent(out: VideoForgeOutput): string {
     "",
     "HASHTAGS:",
     out.hashtags.join(" "),
+    formatFooter({
+      nextSteps: [
+        `Read the hook out loud — if it doesn't earn the next 5 seconds, rewrite it.`,
+        `Record one take focused on the hook + first main point only. Review before continuing.`,
+        `Burn the captions into the final cut; do not rely on auto-captions.`,
+        `Schedule the post via Distribution before the day is over.`,
+      ],
+      distribution: `Native upload (no link in caption — link in pinned comment / bio). Re-cut a 7-second teaser for the second platform after 48h.`,
+      successMetric: `3-second view rate ≥ 65%. Watch which main point holds retention — that's the next video's spine.`,
+    }),
   ].join("\n");
 }
