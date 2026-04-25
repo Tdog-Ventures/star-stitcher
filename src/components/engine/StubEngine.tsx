@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/providers/AuthProvider";
 import { trackEvent } from "@/lib/analytics";
 import { EngineLayout, FormSection, PreviewCard } from "@/components/engine";
+import { buildEnvelope, type EngineKey } from "@/lib/engines/contracts";
 
 export interface StubEngineField {
   key: string;
@@ -65,6 +66,7 @@ export function StubEngine({
   fields,
   buildContent,
   buildTitle,
+  buildOutput,
   sample,
   assetType,
 }: StubEngineProps) {
@@ -110,10 +112,14 @@ export function StubEngine({
     setSavedAssetId(null);
 
     const computedTitle = buildTitle(values).trim() || "Untitled";
-    const body = buildContent(values);
-    const content = `TYPE: ${assetType}\nENGINE: ${engineKey}\n\n${body}`;
+    const markdown = buildContent(values);
+    // Display the readable markdown in the preview, but persist a versioned
+    // envelope so /assets can render structured engine output.
+    const display = `TYPE: ${assetType}\nENGINE: ${engineKey}\n\n${markdown}`;
+    const structured = buildOutput ? buildOutput(values) : { markdown };
+    const content = buildEnvelope(engineKey as EngineKey, structured, display);
 
-    setOutput({ title: computedTitle, content });
+    setOutput({ title: computedTitle, content: display });
 
     const { data: asset, error } = await supabase
       .from("assets")

@@ -42,6 +42,7 @@ const NeonStudio = lazy(() => import("./pages/dashboard/NeonStudio"));
 const VideoVelocityEngine = lazy(() => import("./pages/dashboard/VideoVelocity"));
 const PartnerProgram = lazy(() => import("./pages/dashboard/PartnerProgram"));
 const GrowthHub = lazy(() => import("./pages/dashboard/GrowthHub"));
+const ShowcaseEngine = lazy(() => import("./pages/dashboard/ShowcaseEngine"));
 const OfferHistory = lazy(() => import("./pages/dashboard/OfferHistory"));
 const Assets = lazy(() => import("./pages/dashboard/Assets"));
 const Distribution = lazy(() => import("./pages/dashboard/Distribution"));
@@ -122,6 +123,7 @@ const App = () => (
                   <Route path="/engines/video-velocity" element={<VideoVelocityEngine />} />
                   <Route path="/engines/partner-program" element={<PartnerProgram />} />
                   <Route path="/engines/growth-hub" element={<GrowthHub />} />
+                  <Route path="/engines/showcase" element={<ShowcaseEngine />} />
                   <Route path="/engines/offer" element={<OfferEngine />} />
                   <Route path="/engines/offer/history" element={<OfferHistory />} />
                   <Route path="/assets" element={<Assets />} />

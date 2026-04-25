@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
+  Award,
   Compass,
   FileText,
   Megaphone,
@@ -90,6 +91,15 @@ const ENGINES: EngineDef[] = [
       "One-page growth plan: north-star metric, top channels, weekly experiments.",
     icon: TrendingUp,
     to: "/engines/growth-hub",
+    status: "available",
+  },
+  {
+    key: "showcase",
+    name: "ETHINX Showcase",
+    description:
+      "Package finished work into a public-facing case study, portfolio card, or social post.",
+    icon: Award,
+    to: "/engines/showcase",
     status: "available",
   },
   {
