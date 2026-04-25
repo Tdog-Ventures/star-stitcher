@@ -38,10 +38,12 @@ export interface StubEngineProps {
   intro: string;
   /** Form fields (first one is used as the asset title seed) */
   fields: StubEngineField[];
-  /** Build the asset content body from form values */
+  /** Build the human-readable markdown body from form values */
   buildContent: (values: Record<string, string>) => string;
   /** Build the asset title from form values */
   buildTitle: (values: Record<string, string>) => string;
+  /** Optional: build the structured output object (saved as JSON envelope) */
+  buildOutput?: (values: Record<string, string>) => unknown;
   /** Optional sample values for the "Load sample" button */
   sample?: Record<string, string>;
   /** Asset type label persisted in content header (e.g. "blueprint", "launch-plan") */
