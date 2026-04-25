@@ -837,31 +837,31 @@ function buildTitle(input: VideoForgeInput, mode: VideoMode): string {
   if (mode === "long_form") {
     switch (input.video_goal) {
       case "sales":
-        return `${topic}: the full breakdown (and why most ${input.target_audience || "people"} get it wrong)`;
+        return `${topic}: the full breakdown — and why ${input.target_audience || "most people"} keep losing on it`;
       case "education":
       case "tutorial":
-        return `${topic}, explained — the system, the proof, and the 3-step plan`;
+        return `${topic}, end to end — the system, the proof, and the 3-step plan`;
       case "thought_leadership":
-        return `Why ${topic} is about to change — and what to do about it`;
+        return `${topic} is about to change. If you're not ready, this video is for you.`;
       case "product_demo":
-        return `${topic} — full live walkthrough`;
+        return `${topic} — full live walkthrough, no slides`;
       default:
-        return `${topic}: what most people get wrong (and the loop that fixes it)`;
+        return `${topic}: the loop you've been missing (and why it costs you 6 months)`;
     }
   }
-  if (mode === "faceless") return `${topic} — the 3-step loop (no talking head)`;
+  if (mode === "faceless") return `${topic} — the 3-step loop nobody draws for you`;
   if (mode === "product_demo") return `${topic} in 60 seconds — live demo, no slides`;
   // short_form
   switch (input.video_goal) {
     case "sales":
-      return `${topic} — the offer in 30s`;
+      return `${topic} — the offer in 30s (closes Sunday)`;
     case "education":
     case "tutorial":
-      return `${topic}, in 30 seconds`;
+      return `${topic}, in 30 seconds — save this`;
     case "marketing":
-      return `${topic}: what most people get wrong`;
+      return `${topic}: you're running it backwards`;
     case "thought_leadership":
-      return `Why ${topic} is about to change`;
+      return `${topic} is about to change — are you ready?`;
     case "entertainment":
       return `${topic} — you weren't ready`;
     default:
