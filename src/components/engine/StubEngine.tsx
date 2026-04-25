@@ -70,7 +70,10 @@ export function StubEngine({
   const { user } = useAuth();
 
   const initial = useMemo(
-    () => Object.fromEntries(fields.map((f) => [f.key, ""])) as Record<string, string>,
+    () =>
+      Object.fromEntries(
+        fields.map((f) => [f.key, f.options?.[0]?.value ?? ""]),
+      ) as Record<string, string>,
     [fields],
   );
   const [values, setValues] = useState<Record<string, string>>(initial);
@@ -78,11 +81,26 @@ export function StubEngine({
   const [savedAssetId, setSavedAssetId] = useState<string | null>(null);
   const [output, setOutput] = useState<{ title: string; content: string } | null>(null);
 
+  // Reset state when the field set changes (engine switch within shared shell).
+  useEffect(() => {
+    setValues(initial);
+    setOutput(null);
+    setSavedAssetId(null);
+  }, [initial]);
+
   const set = (key: string, v: string) =>
     setValues((prev) => ({ ...prev, [key]: v }));
 
+  const requiredKeys = useMemo(
+    () => fields.filter((f) => f.required ?? !f.options).map((f) => f.key),
+    [fields],
+  );
+  const canGenerate =
+    requiredKeys.length === 0
+      ? false
+      : requiredKeys.every((k) => (values[k] ?? "").trim().length > 0);
+
   const firstFieldKey = fields[0]?.key;
-  const canGenerate = Boolean(firstFieldKey && values[firstFieldKey]?.trim().length);
 
   const handleGenerate = async () => {
     if (!canGenerate || !user) return;
