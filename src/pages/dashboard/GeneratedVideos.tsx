@@ -202,7 +202,9 @@ const GeneratedVideos = () => {
     const [{ data, error }, { data: taskData }] = await Promise.all([
       supabase
         .from("assets")
-        .select("id, title, engine_key, channel, status, source_record_id, created_at, updated_at, content")
+        .select(
+          "id, title, engine_key, channel, status, source_record_id, created_at, updated_at, content, render_job_id, rendered_video_url, render_status",
+        )
         .eq("engine_key", "video_forge")
         .order("created_at", { ascending: false }),
       supabase
@@ -210,7 +212,7 @@ const GeneratedVideos = () => {
         .select("id, asset_id, status, channel, scheduled_at, sent_at"),
     ]);
     if (error) setError(error.message);
-    else setRows(data ?? []);
+    else setRows((data ?? []) as unknown as AssetRecord[]);
     setTasks(taskData ?? []);
     setLoading(false);
   };
