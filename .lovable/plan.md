@@ -1,107 +1,141 @@
+# FacelessForge Render Integration — Stub
 
+Goal: wire the full integration shape (DB columns, edge function proxy, UI states, polling) with FacelessForge as the rendering engine, but ship it as a clearly-labeled stub. No real API is called yet. No ffmpeg, no queue, no fake MP4 file.
 
-# ETHINX Unified SaaS Platform -- Stitching Plan
+---
 
-## What Each Project Does
+## 1. Database (migration)
 
-| # | Project | Purpose | Type |
-|---|---------|---------|------|
-| 1 | **ETHINX Admin Command Center** | Admin dashboard: clients, deployments, agents, workflows, revenue, content engine, support tickets | Admin panel (Supabase-backed) |
-| 2 | **ETHINX Launchpad** | Public marketing/landing page: products, pricing, how it works, results, partners | Marketing site |
-| 3 | **Creator Blueprint V1** | 8-week creator curriculum dashboard with progress tracking, video lessons, worksheets | Member dashboard |
-| 4 | **Video Velocity** | Sales/order page for video production services: offer, process, order form, FAQ | Sales funnel |
-| 5 | **ETHINX Showcase** | Case studies, results wall, partner logos, activity feed -- social proof page | Portfolio/showcase |
-| 6 | **Creator OS Launchpad** | Audit questionnaire for creators (archetype assessment) | Onboarding funnel |
-| 7 | **Neon Studio** | AI video generation tool with form, generating state, output preview + pricing | SaaS tool |
-| 8 | **ETHINX Partner Program** | Partner program landing page: tiers, revenue calculator, application form | Partner recruitment |
-| 9 | **Creator Growth Hub** | Full member dashboard: curriculum, ad engine, email templates, community, support | Member portal |
+Add two nullable columns to `assets` so any video_forge row can carry render state:
 
-## Architecture: How They Fit Together
+- `render_job_id text` — id returned by FacelessForge (or stub)
+- `rendered_video_url text` — final MP4 URL once render completes
 
-```text
-                        ETHINX Platform
-                             |
-         ┌───────────────────┼───────────────────┐
-         |                   |                   |
-    PUBLIC PAGES        MEMBER AREA         ADMIN AREA
-    (no auth)          (auth required)     (admin auth)
-         |                   |                   |
-  ┌──────┴──────┐    ┌──────┴──────┐    ┌──────┴──────┐
-  | Launchpad   |    | Growth Hub  |    | Command     |
-  | Showcase    |    | Blueprint   |    | Center      |
-  | Partner Pgm |    | Neon Studio |    | (all admin  |
-  | Video Vel.  |    | Creator OS  |    |  pages)     |
-  └─────────────┘    | (onboard)   |    └─────────────┘
-                     └─────────────┘
+Optional helper (also nullable, used by stub + future real API):
+
+- `render_status text` — one of `null | 'pending' | 'completed' | 'failed'`
+
+No RLS changes needed — existing `Assets: own *` policies already gate by `user_id`.
+
+## 2. Backend secrets (placeholders)
+
+Register two runtime secrets via the secrets tool, with placeholder values the user can swap later:
+
+- `FACELESSFORGE_BASE_URL` (placeholder: `https://stub.facelessforge.invalid`)
+- `FACELESSFORGE_API_KEY` (placeholder: `stub-not-connected`)
+
+The edge function reads these but does not actually call out to them while in stub mode.
+
+## 3. Edge functions (proxy boundary)
+
+Two new functions under `supabase/functions/`. Both validate the caller's JWT, look up the asset by id, and confirm the asset belongs to `auth.uid()`. Both return JSON with CORS headers.
+
+### `render-video` (POST)
+
+Input (validated with zod):
+```
+{ asset_id: string (uuid),
+  title: string,
+  script: string,
+  scene_breakdown: unknown[],
+  stock_footage_terms: unknown[],
+  captions: { short_caption?: string, long_caption?: string },
+  voiceover_notes: unknown }
 ```
 
-## User Flow
+Behavior (stub mode — detected when `FACELESSFORGE_API_KEY` is missing or equals `stub-not-connected`):
+1. Generate `render_job_id = 'stub_' + crypto.randomUUID()`
+2. Update `assets` row: `render_job_id = <id>`, `render_status = 'pending'`
+3. Return `{ job_id, status: 'pending', stub: true }`
 
-1. **Visitor lands on `/`** -- ETHINX Launchpad (main marketing page)
-2. **Explores public pages** -- `/showcase`, `/partners`, `/video-velocity`
-3. **Takes the audit** -- `/onboarding` (Creator OS questionnaire)
-4. **Signs up / logs in** -- `/login`, `/signup`
-5. **Enters member area** -- `/dashboard` (Creator Growth Hub as main dashboard)
-6. **Accesses tools** -- `/dashboard/curriculum` (Blueprint), `/dashboard/studio` (Neon Studio)
-7. **Admin users** -- `/admin/*` (Command Center with full sidebar)
+Real-mode branch (left in place but unreachable while secret is the placeholder): would `POST ${FACELESSFORGE_BASE_URL}/render` with `Authorization: Bearer ${FACELESSFORGE_API_KEY}` and the validated payload, then store `job_id` from the response. This branch is wired but commented as the future swap point.
 
-## Implementation Plan
+### `render-video-status` (GET)
 
-### Phase 1: Foundation (this session)
-Set up the unified app shell with routing, shared auth, and theme provider.
+Input: `?job_id=...&asset_id=...` (both validated).
 
-- **Unified App.tsx** with all route groups (public, member, admin)
-- **Shared AuthProvider** and ProtectedRoute (adapted from Admin Command Center)
-- **Shared ThemeProvider** with dark/light toggle
-- **Shared layout components**: public Navbar, member DashboardLayout, AdminLayout
+Behavior in stub mode:
+1. Verify the asset belongs to the caller and `render_job_id` matches.
+2. Return `{ job_id, status: 'completed', video_url: null, stub: true, message: 'Render integration stub — real FacelessForge API not connected yet.' }`
+3. Do NOT write a fake URL into `rendered_video_url`. The column stays null so the UI never claims an MP4 exists.
 
-### Phase 2: Public Pages
-Copy and adapt components from the 4 public-facing projects.
+Real-mode branch: `GET ${FACELESSFORGE_BASE_URL}/jobs/${job_id}`, and on `completed` write the returned `video_url` to `assets.rendered_video_url` and `render_status = 'completed'`.
 
-- **`/`** -- ETHINX Launchpad (hero, products, pricing, results, partners)
-- **`/showcase`** -- ETHINX Showcase (case studies, results wall, activity feed)
-- **`/partners`** -- ETHINX Partner Program (tiers, calculator, application form)
-- **`/video-velocity`** -- Video Velocity (offer, order form, FAQ)
+Both functions deploy with default `verify_jwt = false` and validate the bearer token in code via `supabase.auth.getClaims(token)`.
 
-Each gets its own page file importing its original components, namespaced under folders (e.g. `src/components/launchpad/`, `src/components/showcase/`).
+## 4. Frontend — `/videos` page
 
-### Phase 3: Onboarding + Auth
-- **`/onboarding`** -- Creator OS audit questionnaire (public, leads to signup)
-- **`/login`**, **`/signup`**, **`/forgot-password`**, **`/reset-password`** -- Unified auth pages
-- Supabase integration for auth + archetype_results storage
+Extend `AssetRecord` to include `render_job_id`, `rendered_video_url`, `render_status`. Update the load query.
 
-### Phase 4: Member workspace — Offer + Distribution Engine ✅ shell complete
-The member area is the real SaaS product (manual-first, AI-second), NOT a port of Growth Hub/Blueprint/Neon Studio.
+### New action button per card
 
-- **`/dashboard`** — Workspace overview (stats, shortcuts, empty state)
-- **`/engines`** — List of available engines (Offer Engine live, others "soon")
-- **`/engines/offer`** — Offer Engine: structured form + live preview + save-as-asset
-- **`/assets`** — AssetTable of all saved offers/posts (empty until persistence lands)
-- **`/distribution`** — Distribution planner (empty until persistence lands)
-- **`/settings`** — Profile, theme, sign out
+State machine (mutually exclusive, deterministic from the row):
 
-Reusable primitives in `src/components/engine/`: EngineLayout, FormSection, PreviewCard, AssetTable, StatusBadge.
-Retired stitch pages (Curriculum, Studio, AdEngine, Templates, Community, member Support) — removed.
+| Row state | Button shown | Sub-text |
+|---|---|---|
+| `render_job_id == null` | **Render video** (calls render-video) | none |
+| `render_job_id != null && rendered_video_url == null` | **Rendering…** (disabled, spinner) | "Stub: marks as complete on next poll" |
+| `rendered_video_url != null` | **MP4 attached** badge + **Download MP4** (anchor to url) | "Rendered by FacelessForge" |
 
-### Phase 5: Admin Panel
-- **`/admin`** -- Command Board
-- **`/admin/clients`**, **`/admin/deployments`**, **`/admin/agents`**, **`/admin/workflows`**, **`/admin/revenue`**, **`/admin/content`**, **`/admin/support`**, **`/admin/settings`**
-- AdminLayout with sidebar navigation (already built in Command Center)
+A persistent banner sits at the top of the page:
 
-### Phase 6: Supabase + Wiring
-- Connect Lovable Cloud Supabase for database (tables from Admin Command Center schema)
-- Wire up real data flows: questionnaire results, client management, support tickets, checkout/payments
-- Role-based access (admin vs member) using a `user_roles` table
+> ⚠️ Render integration stub — real FacelessForge API not connected yet. Buttons exercise the full pipeline shape but no MP4 is produced.
 
-## Technical Details
+### Polling — client-side + resume on reload
 
-- **Component namespacing**: Each project's components go into `src/components/{module}/` to avoid naming collisions (e.g. multiple HeroSections become `launchpad/HeroSection`, `showcase/HeroSection`, etc.)
-- **Shared UI**: The `src/components/ui/` folder (shadcn) is already in this project and shared across all modules
-- **Assets**: Images/fonts from each project will be copied via `cross_project--copy_project_asset`
-- **Supabase types**: Merged from the Admin Command Center's 1100-line types file as the starting schema
-- **Dependencies**: Some projects use `framer-motion`, `recharts`, `date-fns` -- these will be installed once in the unified project
+- On page mount, scan `rows` for any with `render_job_id && !rendered_video_url`. Add their ids to a `polling: Set<string>` state.
+- After clicking **Render video** for a row, add that row's id to `polling` once the job_id is returned.
+- A single `useEffect` runs `setInterval(5000)` while `polling.size > 0`. Each tick, for each polling id it calls the `render-video-status` edge function via `supabase.functions.invoke`, and on `completed` removes the id from `polling` and refreshes that row from the DB.
+- Interval is cleared on unmount and when `polling` empties.
 
-## Execution Approach
+In stub mode the very first poll returns `completed` with `video_url: null`, so the UI flips from **Rendering…** back to **Render video** and the banner explains why no MP4 appeared. Critically, no fake MP4 link is ever shown.
 
-Due to size, this will be built incrementally across multiple sessions. Phase 1 (foundation + routing shell) will be built first. Each subsequent phase copies components from the source projects, adapts imports, and wires them into the unified router.
+### What stays unchanged
 
+- Script download (`.txt`)
+- Captions download (`.txt`)
+- Distribution flow (modal, `distribution_tasks` insert, `trackEvent`)
+- All existing badges and metadata rows
+
+## 5. Tests
+
+Extend `src/test/video-forge.test.ts` (or add a sibling `generated-videos.render.test.tsx`) with:
+
+1. **State derivation** — pure function `deriveRenderUi(row)` that returns `'idle' | 'rendering' | 'complete'`. Unit-test the three branches.
+2. **Render click** — render `<GeneratedVideos />` with a mocked `supabase` client, click **Render video**, assert `supabase.functions.invoke('render-video', ...)` was called with `{ asset_id, title, script, scene_breakdown, stock_footage_terms, captions, voiceover_notes }`.
+3. **Stub completion** — mock the status invoke to return `{ status: 'completed', video_url: null }`, advance fake timers, assert the banner stays and the button reverts to **Render video** (no Download button appears, no MP4 claim).
+
+Existing 49 tests must continue to pass. The deterministic `video-forge.ts` generator is not touched.
+
+## 6. Validation
+
+- `bun run build` must succeed
+- `bunx vitest run` must be green (existing 49 + new render tests)
+- No edge function tests required for the stub (logic is trivial); can add later when wiring the real API.
+
+---
+
+## Files changed
+
+**New**
+- `supabase/migrations/<ts>_add_render_columns_to_assets.sql`
+- `supabase/functions/render-video/index.ts`
+- `supabase/functions/render-video-status/index.ts`
+- `src/test/generated-videos.render.test.tsx`
+
+**Edited**
+- `src/pages/dashboard/GeneratedVideos.tsx` — add render button, state machine, polling, stub banner, extended select
+- `.env` is auto-managed — no manual edit
+
+**Untouched**
+- `src/lib/video-forge.ts`
+- All other engines, tests, routes
+- `src/integrations/supabase/types.ts` (auto-regenerated after migration)
+
+## What FacelessForge will need to provide later (no work now)
+
+- A `POST /render` endpoint accepting the payload above, returning `{ job_id }`
+- A `GET /jobs/:id` endpoint returning `{ status: 'pending' | 'completed' | 'failed', video_url?: string }`
+- An API key
+
+Swapping in the real integration = adding the secret values + flipping the stub-mode check in both edge functions. No frontend changes required.
