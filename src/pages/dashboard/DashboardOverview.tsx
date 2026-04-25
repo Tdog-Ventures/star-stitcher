@@ -9,6 +9,7 @@ import {
   Plus,
   RotateCcw,
   Send,
+  Video,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +28,12 @@ import {
 } from "@/lib/onboarding";
 
 const QUICK_ACTIONS = [
+  {
+    to: "/engines/video-forge",
+    title: "Create video script",
+    description: "Open Video Forge and generate a structured script.",
+    icon: Video,
+  },
   {
     to: "/engines/offer",
     title: "Create offer",
@@ -219,15 +226,15 @@ const DashboardOverview = () => {
           ) : null}
           {isFreshAccount ? (
             <Button asChild>
-              <Link to="/engines/offer">
+              <Link to="/engines/video-forge">
                 Start here
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
           ) : (
             <Button asChild>
-              <Link to="/engines">
-                New offer
+              <Link to="/engines/video-forge">
+                New video script
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
@@ -335,13 +342,13 @@ const DashboardOverview = () => {
 
       {isFreshAccount ? (
         <section className="rounded-lg border border-dashed border-border bg-card p-8 text-center">
-          <FileText className="mx-auto h-6 w-6 text-muted-foreground" />
+          <Video className="mx-auto h-6 w-6 text-muted-foreground" />
           <p className="mt-3 text-sm font-medium text-foreground">Nothing here yet</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Create your first offer to populate this dashboard.
+            Generate your first video script to populate this dashboard.
           </p>
           <Button asChild size="sm" className="mt-4">
-            <Link to="/engines/offer">
+            <Link to="/engines/video-forge">
               Start here
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>

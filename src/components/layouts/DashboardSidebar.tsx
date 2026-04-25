@@ -1,4 +1,4 @@
-import { LayoutDashboard, Sparkles, Layers, Send, Settings as SettingsIcon } from "lucide-react";
+import { LayoutDashboard, Sparkles, Layers, Send, Settings as SettingsIcon, Video } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar,
@@ -14,7 +14,8 @@ import {
 
 const items = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, end: true },
-  { title: "Engines", url: "/engines", icon: Sparkles },
+  { title: "Video Forge", url: "/engines/video-forge", icon: Video },
+  { title: "Engines", url: "/engines", icon: Sparkles, end: true },
   { title: "Assets", url: "/assets", icon: Layers },
   { title: "Distribution", url: "/distribution", icon: Send },
   { title: "Settings", url: "/settings", icon: SettingsIcon },

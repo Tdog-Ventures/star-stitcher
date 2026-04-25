@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, FileText, Send, Sparkles } from "lucide-react";
+import { ArrowRight, FileText, Send, Sparkles, Video } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,15 @@ interface EngineDef {
 }
 
 const ENGINES: EngineDef[] = [
+  {
+    key: "video-forge",
+    name: "Video Forge",
+    description:
+      "Turn a topic into a structured video script: hook, main points, CTA, captions, and hashtags. Instant.",
+    icon: Video,
+    to: "/engines/video-forge",
+    status: "available",
+  },
   {
     key: "offer",
     name: "Offer Engine",
