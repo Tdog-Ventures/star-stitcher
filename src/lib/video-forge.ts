@@ -216,33 +216,33 @@ function buildHook(input: VideoForgeInput, mode: VideoMode): string {
   if (mode === "short_form") {
     switch (input.tone) {
       case "controversial":
-        return `Everyone telling ${who} how to do ${topic} is wrong. Here's the proof — in 30 seconds.`;
+        return `Everything ${who} get told about ${topic} is built on one wrong assumption. Here it is — in 30 seconds.`;
       case "bold":
-        return `${who}, stop scrolling. If ${topic} matters to you, the next 30 seconds change how you do it.`;
+        return `${who}: ${topic} isn't broken. You're running half the loop. Watch what fixes it in 30 seconds.`;
       case "storytelling":
-        return `I tried ${topic} the way ${who} are told to. It failed. This is what actually worked.`;
+        return `I did ${topic} the way ${who} are told to. It bombed. Here's the version that actually worked.`;
       case "casual":
-        return `Quick one: the one thing nobody tells ${who} about ${topic}.`;
+        return `Nobody tells ${who} this about ${topic} — and it's the only part that matters. Quick one.`;
       case "cinematic":
-        return `${topic}. One move. Most ${who} never make it. Watch.`;
+        return `${topic}. One move. Most ${who} never make it. The next 30 seconds show why.`;
       case "educational":
-        return `In 30 seconds, ${who} will understand ${topic} better than 90% of the field. Go.`;
+        return `Thirty seconds from now, ${who} will see ${topic} the way the top 10% do. Press play.`;
       case "professional":
       default:
-        return `If you're ${who} and you care about ${topic}, here's the 30-second version that actually matters.`;
+        return `${who}: here's the 30-second version of ${topic} that actually moves the needle.`;
     }
   }
 
   if (mode === "long_form") {
-    return `In the next few minutes, I'm going to show ${who} exactly how to think about ${topic} — including the one mistake that costs most people six months. Stay until the end; the third move is the one nobody talks about.`;
+    return `Most ${who} approach ${topic} the wrong way — and it costs them six months. In the next few minutes I'll show you the one reframe that fixes it, the proof it works, and the 3-step plan you can run this week. The third step is the one nobody talks about.`;
   }
 
   if (mode === "faceless") {
-    return `${topic}. Most ${who} get this wrong on day one. Watch what changes when you flip just one thing — no talking head, just the truth on screen.`;
+    return `${topic}. Most ${who} get the first move wrong. Flip one thing — and the whole loop changes.`;
   }
 
   // product_demo
-  return `In the next 60 seconds I'll show ${who} exactly how ${topic} works — live, in the product, no slides, no fluff. By the end you'll know if it's right for you.`;
+  return `Sixty seconds. ${topic}, live, in the product. By the end you'll know if it's right for you.`;
 }
 
 // ---------- script sections ----------
