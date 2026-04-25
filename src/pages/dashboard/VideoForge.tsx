@@ -21,6 +21,7 @@ import {
   FORMAT_LABELS,
   GOAL_LABELS,
   LENGTH_LABELS,
+  MODE_LABELS,
   PLATFORM_LABELS,
   TONE_LABELS,
   formatVideoForge,
@@ -30,6 +31,7 @@ import {
   type VideoFormat,
   type VideoGoal,
   type VideoLength,
+  type VideoMode,
   type VideoPlatform,
   type VideoTone,
 } from "@/lib/video-forge";
@@ -44,6 +46,7 @@ const EMPTY: VideoForgeInput = {
   tone: "professional",
   target_length: "medium",
   desired_outcome: "",
+  mode: "short_form",
 };
 
 const SAMPLE: VideoForgeInput = {
@@ -55,6 +58,7 @@ const SAMPLE: VideoForgeInput = {
   tone: "bold",
   target_length: "short",
   desired_outcome: "Send one email today that gets a reply",
+  mode: "short_form",
 };
 
 const VideoForge = () => {
@@ -256,6 +260,32 @@ const VideoForge = () => {
         </div>
       </FormSection>
 
+      <FormSection title="Output mode" description="Pick the kind of script you want generated.">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2 sm:col-span-2">
+            <Label htmlFor="mode">Mode</Label>
+            <Select
+              value={fields.mode ?? "short_form"}
+              onValueChange={(v) => set("mode", v as VideoMode)}
+            >
+              <SelectTrigger id="mode">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(Object.keys(MODE_LABELS) as VideoMode[]).map((m) => (
+                  <SelectItem key={m} value={m}>
+                    {MODE_LABELS[m]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Short-form, long-form YouTube, faceless, or product demo. Each mode changes the hook, scene plan, voiceover notes, and success metric.
+            </p>
+          </div>
+        </div>
+      </FormSection>
+
       <FormSection title="Format & style" description="Where it runs and how it feels.">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
@@ -322,12 +352,24 @@ const VideoForge = () => {
       </FormSection>
 
       {output ? (
-        <FormSection title="Generated video plan" description="Saved as asset. Open the asset to edit.">
+        <FormSection
+          title={`Generated ${MODE_LABELS[output.mode].toLowerCase()}`}
+          description="Saved as asset. Open the asset to edit."
+        >
           <div className="space-y-4 text-sm">
             <Section label="Title">{output.video_title}</Section>
             <Section label="Core angle">{output.core_angle}</Section>
             <Section label="Viewer promise">{output.viewer_promise}</Section>
             <Section label="Opening hook">{output.opening_hook}</Section>
+
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Full script
+              </p>
+              <pre className="mt-1 max-h-96 overflow-auto whitespace-pre-wrap rounded-md border border-border bg-muted/40 p-3 text-xs text-foreground">
+{output.full_script}
+              </pre>
+            </div>
 
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -347,18 +389,61 @@ const VideoForge = () => {
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Scene breakdown ({output.scene_breakdown.length})
               </p>
-              <ol className="mt-1 list-decimal space-y-2 pl-5 text-foreground">
+              <ol className="mt-1 list-decimal space-y-3 pl-5 text-foreground">
                 {output.scene_breakdown.map((s) => (
                   <li key={s.scene_number}>
-                    <span className="font-medium">{s.scene_purpose}:</span> {s.suggested_visual}
+                    <div>
+                      <span className="font-medium">{s.timecode} · {s.scene_purpose}</span>
+                    </div>
+                    <div className="text-muted-foreground">{s.narration}</div>
+                    <div className="text-xs text-muted-foreground">
+                      Visual: {s.suggested_visual}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Stock/B-roll: <code>{s.b_roll_or_stock_query}</code>
+                    </div>
                     {s.on_screen_text ? (
-                      <span className="ml-1 text-muted-foreground">
-                        — overlay "{s.on_screen_text}"
-                      </span>
+                      <div className="text-xs text-muted-foreground">
+                        On-screen: "{s.on_screen_text}"
+                      </div>
                     ) : null}
+                    <div className="text-xs text-muted-foreground">VO: {s.voiceover_note}</div>
                   </li>
                 ))}
               </ol>
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Stock footage / B-roll search terms
+              </p>
+              <ul className="mt-1 list-disc pl-5 text-foreground">
+                {output.stock_footage_terms.map((t, i) => (
+                  <li key={i}><code className="text-xs">{t}</code></li>
+                ))}
+              </ul>
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                On-screen text overlays
+              </p>
+              <ol className="mt-1 list-decimal pl-5 text-foreground">
+                {output.on_screen_text_overlays.map((t, i) => (
+                  <li key={i}>{t}</li>
+                ))}
+              </ol>
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Voiceover notes
+              </p>
+              <ul className="mt-1 list-disc pl-5 text-foreground">
+                {output.voiceover_notes.map((n, i) => (
+                  <li key={i}>{n}</li>
+                ))}
+              </ul>
             </div>
 
             <div>
@@ -387,7 +472,7 @@ const VideoForge = () => {
 
             <div className="flex items-center gap-2 pt-2 text-xs text-muted-foreground">
               <Save className="h-3 w-3" />
-              Stored in assets · engine_key=video_forge
+              Stored in assets · engine_key=video_forge · mode={output.mode}
             </div>
           </div>
         </FormSection>
