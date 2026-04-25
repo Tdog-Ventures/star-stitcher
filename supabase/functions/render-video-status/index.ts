@@ -1,12 +1,7 @@
-// Render Video Status — FacelessForge proxy (STUB MODE)
+// Render Video Status — FacelessForge proxy (LIVE)
 //
-// In stub mode this returns { status: 'completed', video_url: null } on the
-// first poll, but does NOT write a fake video_url onto the asset. The UI uses
-// rendered_video_url to decide whether to show "Download MP4", so a null url
-// keeps the UI honest: no MP4 is claimed to exist.
-//
-// In real mode this would proxy GET ${FACELESSFORGE_BASE_URL}/jobs/:id and,
-// on completed, persist the returned video_url to assets.rendered_video_url.
+// GET status from FacelessForge. On `completed` we persist the returned
+// video_url onto the asset; on `failed` we mark render_status = "failed".
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -17,10 +12,17 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
-const STUB_API_KEY = "stub-not-connected";
-
 function isUuid(s: unknown): s is string {
   return typeof s === "string" && /^[0-9a-f-]{36}$/i.test(s);
+}
+
+// Normalise upstream status to one of: queued | running | completed | failed.
+function normaliseStatus(raw: unknown): "queued" | "running" | "completed" | "failed" {
+  const s = String(raw ?? "").toLowerCase();
+  if (s === "completed" || s === "complete" || s === "done" || s === "succeeded") return "completed";
+  if (s === "failed" || s === "error" || s === "errored") return "failed";
+  if (s === "running" || s === "processing" || s === "in_progress" || s === "started") return "running";
+  return "queued";
 }
 
 Deno.serve(async (req) => {
@@ -50,7 +52,7 @@ Deno.serve(async (req) => {
   }
   const userId = userData.user.id;
 
-  // Accept params from query string (GET) OR body (POST via supabase.functions.invoke)
+  // Accept params from query string (GET) OR body (POST via supabase.functions.invoke).
   let jobId = "";
   let assetId = "";
   if (req.method === "POST") {
@@ -101,47 +103,47 @@ Deno.serve(async (req) => {
 
   const apiKey = Deno.env.get("FACELESSFORGE_API_KEY") ?? "";
   const baseUrl = Deno.env.get("FACELESSFORGE_BASE_URL") ?? "";
-  const isStub = !apiKey || apiKey === STUB_API_KEY || !baseUrl;
-
-  if (isStub) {
-    // Mark the asset's render_status as completed so resume-on-reload settles,
-    // but DO NOT write a video_url. The UI must keep showing the stub banner
-    // and never offer a Download MP4 button.
-    if (asset.render_status !== "completed") {
-      await supabase
-        .from("assets")
-        .update({ render_status: "completed" })
-        .eq("id", assetId);
-    }
+  if (!apiKey || !baseUrl) {
     return new Response(
-      JSON.stringify({
-        job_id: jobId,
-        status: "completed",
-        video_url: null,
-        stub: true,
-        message:
-          "Render integration stub — real FacelessForge API not connected yet. No MP4 was produced.",
-      }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      JSON.stringify({ error: "FacelessForge is not configured" }),
+      { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 
-  // ---- Future real-mode branch ----
   try {
     const upstream = await fetch(
-      `${baseUrl.replace(/\/$/, "")}/jobs/${encodeURIComponent(jobId)}`,
-      { headers: { Authorization: `Bearer ${apiKey}` } },
+      `${baseUrl.replace(/\/$/, "")}/api/external/render-video-status?job_id=${encodeURIComponent(jobId)}`,
+      { headers: { "X-FacelessForge-Key": apiKey } },
     );
+    const text = await upstream.text();
     if (!upstream.ok) {
-      const txt = await upstream.text();
+      console.error("[render-video-status] upstream error", upstream.status, text);
       return new Response(
-        JSON.stringify({ error: `FacelessForge error [${upstream.status}]: ${txt}` }),
+        JSON.stringify({ error: `FacelessForge error [${upstream.status}]: ${text}` }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
-    const data = await upstream.json();
-    const status = String(data.status ?? "pending");
-    const videoUrl = typeof data.video_url === "string" ? data.video_url : null;
+    let data: Record<string, unknown> = {};
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "FacelessForge returned non-JSON response" }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const status = normaliseStatus(data.status ?? data.render_status);
+    const videoUrl = typeof data.video_url === "string"
+      ? data.video_url
+      : typeof data.rendered_video_url === "string"
+      ? data.rendered_video_url
+      : null;
+    const errorMessage = typeof data.error === "string"
+      ? data.error
+      : typeof data.message === "string"
+      ? data.message
+      : null;
 
     if (status === "completed" && videoUrl) {
       await supabase
@@ -149,14 +151,29 @@ Deno.serve(async (req) => {
         .update({ rendered_video_url: videoUrl, render_status: "completed" })
         .eq("id", assetId);
     } else if (status === "failed") {
-      await supabase.from("assets").update({ render_status: "failed" }).eq("id", assetId);
+      await supabase
+        .from("assets")
+        .update({ render_status: "failed" })
+        .eq("id", assetId);
+    } else if (status === "running" && asset.render_status !== "running") {
+      await supabase
+        .from("assets")
+        .update({ render_status: "running" })
+        .eq("id", assetId);
     }
 
     return new Response(
-      JSON.stringify({ job_id: jobId, status, video_url: videoUrl, stub: false }),
+      JSON.stringify({
+        job_id: jobId,
+        status,
+        video_url: videoUrl,
+        rendered_video_url: videoUrl,
+        error: errorMessage,
+      }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {
+    console.error("[render-video-status] fetch failed", e);
     return new Response(
       JSON.stringify({ error: e instanceof Error ? e.message : "Upstream call failed" }),
       { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },

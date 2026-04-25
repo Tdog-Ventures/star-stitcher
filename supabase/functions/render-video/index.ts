@@ -1,12 +1,8 @@
-// Render Video — FacelessForge proxy (STUB MODE)
+// Render Video — FacelessForge proxy (LIVE)
 //
-// This edge function is the future proxy boundary between the app and the
-// FacelessForge render API. While in stub mode (no real FACELESSFORGE_API_KEY
-// configured), it does NOT call out to FacelessForge — it just records a fake
-// render_job_id on the asset and returns it. No MP4 is produced.
-//
-// To switch to real mode: set FACELESSFORGE_BASE_URL + FACELESSFORGE_API_KEY
-// to real values and the real-mode branch below will activate.
+// Receives a render request from the /videos page, validates the caller,
+// confirms the asset belongs to them, then POSTs to FacelessForge.
+// The API key is read from Deno.env and never exposed to the browser.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -17,13 +13,21 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const STUB_API_KEY = "stub-not-connected";
+interface SceneIn {
+  scene_number?: number;
+  duration?: number;
+  duration_seconds?: number;
+  narration_text?: string;
+  visual_direction?: string;
+  caption_text?: string;
+  search_terms?: unknown;
+}
 
 interface RenderInput {
   asset_id: string;
   title: string;
   script: string;
-  scene_breakdown: unknown[];
+  scene_breakdown: SceneIn[];
   stock_footage_terms: unknown[];
   captions: { short_caption?: string; long_caption?: string };
   voiceover_notes: unknown;
@@ -48,7 +52,7 @@ function validate(body: unknown): { ok: true; data: RenderInput } | { ok: false;
       asset_id: b.asset_id as string,
       title: b.title as string,
       script: b.script as string,
-      scene_breakdown: b.scene_breakdown as unknown[],
+      scene_breakdown: b.scene_breakdown as SceneIn[],
       stock_footage_terms: b.stock_footage_terms as unknown[],
       captions: {
         short_caption: typeof caps.short_caption === "string" ? caps.short_caption : undefined,
@@ -56,6 +60,24 @@ function validate(body: unknown): { ok: true; data: RenderInput } | { ok: false;
       },
       voiceover_notes: b.voiceover_notes ?? null,
     },
+  };
+}
+
+// Map a VideoForge scene into the shape FacelessForge expects.
+function mapScene(s: SceneIn, idx: number) {
+  const dur = typeof s.duration === "number"
+    ? s.duration
+    : typeof s.duration_seconds === "number"
+    ? s.duration_seconds
+    : undefined;
+  return {
+    scene_number: typeof s.scene_number === "number" ? s.scene_number : idx + 1,
+    duration: dur,
+    duration_seconds: dur,
+    narration_text: typeof s.narration_text === "string" ? s.narration_text : "",
+    visual_direction: typeof s.visual_direction === "string" ? s.visual_direction : "",
+    caption_text: typeof s.caption_text === "string" ? s.caption_text : "",
+    search_terms: Array.isArray(s.search_terms) ? s.search_terms : [],
   };
 }
 
@@ -111,10 +133,9 @@ Deno.serve(async (req) => {
   }
   const input = parsed.data;
 
-  // Confirm the asset belongs to the caller (RLS will also enforce, but be explicit)
   const { data: asset, error: assetErr } = await supabase
     .from("assets")
-    .select("id, user_id, engine_key, render_job_id")
+    .select("id, user_id, engine_key")
     .eq("id", input.asset_id)
     .maybeSingle();
 
@@ -127,60 +148,82 @@ Deno.serve(async (req) => {
 
   const apiKey = Deno.env.get("FACELESSFORGE_API_KEY") ?? "";
   const baseUrl = Deno.env.get("FACELESSFORGE_BASE_URL") ?? "";
-  const isStub = !apiKey || apiKey === STUB_API_KEY || !baseUrl;
+  if (!apiKey || !baseUrl) {
+    return new Response(
+      JSON.stringify({ error: "FacelessForge is not configured" }),
+      { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
 
-  let jobId: string;
+  const upstreamPayload = {
+    source: "ethinx_videoforge",
+    external_asset_id: input.asset_id,
+    title: input.title,
+    script: input.script,
+    scene_breakdown: input.scene_breakdown.map(mapScene),
+    stock_footage_terms: input.stock_footage_terms,
+    captions: input.captions,
+    voiceover_notes: input.voiceover_notes,
+  };
 
-  if (isStub) {
-    jobId = `stub_${crypto.randomUUID()}`;
-  } else {
-    // ---- Future real-mode branch (not exercised while stub) ----
-    try {
-      const upstream = await fetch(`${baseUrl.replace(/\/$/, "")}/render`, {
+  let jobId = "";
+  let upstreamStatus = "queued";
+  try {
+    const upstream = await fetch(
+      `${baseUrl.replace(/\/$/, "")}/api/external/render-video`,
+      {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${apiKey}`,
+          "X-FacelessForge-Key": apiKey,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          asset_id: input.asset_id,
-          title: input.title,
-          script: input.script,
-          scene_breakdown: input.scene_breakdown,
-          stock_footage_terms: input.stock_footage_terms,
-          captions: input.captions,
-          voiceover_notes: input.voiceover_notes,
-        }),
-      });
-      if (!upstream.ok) {
-        const txt = await upstream.text();
-        return new Response(
-          JSON.stringify({ error: `FacelessForge error [${upstream.status}]: ${txt}` }),
-          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
-      const data = await upstream.json();
-      jobId = String(data.job_id ?? "");
-      if (!jobId) {
-        return new Response(JSON.stringify({ error: "FacelessForge did not return job_id" }), {
-          status: 502,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-    } catch (e) {
+        body: JSON.stringify(upstreamPayload),
+      },
+    );
+    const text = await upstream.text();
+    if (!upstream.ok) {
+      console.error("[render-video] upstream error", upstream.status, text);
       return new Response(
-        JSON.stringify({ error: e instanceof Error ? e.message : "Upstream call failed" }),
+        JSON.stringify({ error: `FacelessForge error [${upstream.status}]: ${text}` }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
+    let data: Record<string, unknown> = {};
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      console.error("[render-video] non-JSON upstream body", text);
+      return new Response(
+        JSON.stringify({ error: "FacelessForge returned non-JSON response" }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    jobId = String(
+      data.render_job_id ?? data.job_id ?? data.id ?? "",
+    );
+    upstreamStatus = String(data.status ?? data.render_status ?? "queued");
+    if (!jobId) {
+      console.error("[render-video] no job id in upstream response", data);
+      return new Response(
+        JSON.stringify({ error: "FacelessForge did not return a job id" }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+  } catch (e) {
+    console.error("[render-video] fetch failed", e);
+    return new Response(
+      JSON.stringify({ error: e instanceof Error ? e.message : "Upstream call failed" }),
+      { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   }
 
   const { error: updateErr } = await supabase
     .from("assets")
-    .update({ render_job_id: jobId, render_status: "pending" })
+    .update({ render_job_id: jobId, render_status: "queued" })
     .eq("id", input.asset_id);
 
   if (updateErr) {
+    console.error("[render-video] failed to persist job_id", updateErr);
     return new Response(JSON.stringify({ error: updateErr.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -190,11 +233,9 @@ Deno.serve(async (req) => {
   return new Response(
     JSON.stringify({
       job_id: jobId,
-      status: "pending",
-      stub: isStub,
-      message: isStub
-        ? "Render integration stub — real FacelessForge API not connected yet."
-        : undefined,
+      render_job_id: jobId,
+      status: "queued",
+      upstream_status: upstreamStatus,
     }),
     { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
   );
