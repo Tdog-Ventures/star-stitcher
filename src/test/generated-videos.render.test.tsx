@@ -39,6 +39,15 @@ describe("deriveRenderUi", () => {
       }),
     ).toBe("failed");
   });
+  it("returns cancelled when render_status is cancelled and no url", () => {
+    expect(
+      deriveRenderUi({
+        render_job_id: "job_abc",
+        rendered_video_url: null,
+        render_status: "cancelled",
+      }),
+    ).toBe("cancelled");
+  });
 });
 
 // ---- Page-level render integration ----------------------------------------
