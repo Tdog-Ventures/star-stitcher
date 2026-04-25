@@ -620,6 +620,14 @@ const GeneratedVideos = () => {
                           </p>
                         );
                       }
+                      if (renderUi === "cancelled") {
+                        return (
+                          <p className="text-[11px] text-muted-foreground">
+                            <Ban className="mr-1 inline h-3 w-3" aria-hidden="true" />
+                            Render cancelled. You can start a new render.
+                          </p>
+                        );
+                      }
                       return (
                         <p className="text-[11px] text-muted-foreground">
                           <Film className="mr-1 inline h-3 w-3" aria-hidden="true" />
