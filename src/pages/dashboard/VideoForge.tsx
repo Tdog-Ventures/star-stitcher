@@ -162,7 +162,7 @@ const VideoForge = () => {
   return (
     <EngineLayout
       title="Video Forge"
-      description="The core engine. Turn an idea into a structured video concept, script, scenes, captions, thumbnails, and a distribution plan — instantly."
+      description="Turn an idea into a production-ready video plan — script, scenes, captions, thumbnails, and a distribution playbook. Rendered MP4 export coming next."
       actions={
         <>
           <Button variant="outline" size="sm" onClick={loadSample}>

@@ -29,7 +29,7 @@ const ENGINES: EngineTile[] = [
   {
     key: "video-forge",
     name: "Video Forge",
-    blurb: "Topic in. Shootable script, scenes, captions, hashtags out.",
+    blurb: "Topic in. Shootable script, scenes, captions, hashtags out — ready for your camera or editor.",
     icon: Video,
     to: "/engines/video-forge",
     primary: true,
@@ -121,8 +121,9 @@ const Index = () => {
               </p>
 
               <p className="max-w-xl text-sm text-muted-foreground md:text-base">
-                Generate complete video systems — scripts, scenes, visuals, and
-                distribution — from one control layer.
+                Generate production-ready video plans — full scripts, scene breakdowns,
+                captions, thumbnails, and distribution playbooks — from one control layer.
+                Rendered MP4 export coming next.
               </p>
 
               <div className="flex flex-wrap items-center gap-3 pt-2">
