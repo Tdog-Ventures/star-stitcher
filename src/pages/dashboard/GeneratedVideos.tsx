@@ -359,23 +359,33 @@ const GeneratedVideos = () => {
       });
       return;
     }
-    const payload = (data ?? {}) as { job_id?: string; stub?: boolean };
-    if (!payload.job_id) {
+    const payload = (data ?? {}) as { job_id?: string; render_job_id?: string };
+    const jobId = payload.job_id ?? payload.render_job_id;
+    if (!jobId) {
       toast({
-        title: "No job_id returned",
+        title: "No job id returned",
         description: "FacelessForge did not return a job id.",
         variant: "destructive",
       });
       return;
     }
     toast({
-      title: payload.stub ? "Render queued (stub)" : "Render queued",
-      description: payload.stub
-        ? "Stub mode — no MP4 will be produced. Real FacelessForge API not connected yet."
-        : `Job ${payload.job_id}`,
+      title: "Render queued",
+      description: `Job ${jobId}`,
     });
     setPolling((p) => new Set(p).add(rec.id));
     await load();
+  };
+
+  const handleRetry = async (rec: AssetRecord, meta: VideoForgeMeta) => {
+    if (!user) return;
+    // Reset render columns so the row goes back to "idle" before re-submitting.
+    await supabase
+      .from("assets")
+      .update({ render_job_id: null, rendered_video_url: null, render_status: null })
+      .eq("id", rec.id);
+    await load();
+    await handleRender({ ...rec, render_job_id: null, rendered_video_url: null, render_status: null }, meta);
   };
 
 
