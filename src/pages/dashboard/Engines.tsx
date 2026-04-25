@@ -131,12 +131,20 @@ const Engines = () => (
         return (
           <Card
             key={engine.key}
-            className="flex flex-col transition-colors hover:border-primary/40"
+            className={
+              engine.primary
+                ? "flex flex-col border-primary/50 transition-colors hover:border-primary"
+                : "flex flex-col transition-colors hover:border-primary/40"
+            }
           >
             <CardHeader>
               <div className="flex items-center justify-between">
                 <Icon className="h-5 w-5 text-muted-foreground" />
-                {disabled && <Badge variant="secondary">Soon</Badge>}
+                {disabled ? (
+                  <Badge variant="secondary">Soon</Badge>
+                ) : engine.primary ? (
+                  <Badge>Primary</Badge>
+                ) : null}
               </div>
               <CardTitle className="mt-3 text-base">{engine.name}</CardTitle>
               <CardDescription>{engine.description}</CardDescription>
