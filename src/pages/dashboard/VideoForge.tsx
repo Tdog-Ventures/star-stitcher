@@ -83,6 +83,19 @@ const VideoForge = () => {
     const result = generateVideoForge(fields);
     setOutput(result);
 
+    // Pre-save validation: every required output field must be present and
+    // non-empty, and every scene must carry the production fields.
+    const validation = validateVideoForgeOutput(result);
+    if (!validation.ok) {
+      setSaving(false);
+      toast({
+        title: "Video plan is incomplete — not saved",
+        description: validation.errors.slice(0, 4).join(" · "),
+        variant: "destructive",
+      });
+      return;
+    }
+
     const markdown = formatVideoForge(fields, result);
     const content = buildEnvelope("video_forge", result, markdown);
 
