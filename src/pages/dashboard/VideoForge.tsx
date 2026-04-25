@@ -148,6 +148,7 @@ const VideoForge = () => {
     setFields(SAMPLE);
     setOutput(null);
     setSavedAssetId(null);
+    setValidationIssues([]);
     toast({ title: "Sample loaded", description: "Tweak any field, then generate." });
   };
 
@@ -155,6 +156,7 @@ const VideoForge = () => {
     setFields(EMPTY);
     setOutput(null);
     setSavedAssetId(null);
+    setValidationIssues([]);
   };
 
   return (
