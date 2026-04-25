@@ -1,5 +1,6 @@
 // Video Velocity — turns batch topic + count + platform
 // into a per-video production plan for one filming session.
+import { formatFooter } from "./output-footer";
 
 export type VelocityPlatform = "tiktok" | "reels" | "shorts" | "linkedin" | "x";
 
