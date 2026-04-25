@@ -1,10 +1,17 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Save, Send, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/providers/AuthProvider";
@@ -16,6 +23,10 @@ export interface StubEngineField {
   label: string;
   placeholder?: string;
   textarea?: boolean;
+  /** When provided, renders as a Select; first option is the default. */
+  options?: { value: string; label: string }[];
+  /** When true, this field is required for the Generate button to enable. */
+  required?: boolean;
 }
 
 export interface StubEngineProps {
@@ -59,7 +70,10 @@ export function StubEngine({
   const { user } = useAuth();
 
   const initial = useMemo(
-    () => Object.fromEntries(fields.map((f) => [f.key, ""])) as Record<string, string>,
+    () =>
+      Object.fromEntries(
+        fields.map((f) => [f.key, f.options?.[0]?.value ?? ""]),
+      ) as Record<string, string>,
     [fields],
   );
   const [values, setValues] = useState<Record<string, string>>(initial);
@@ -67,11 +81,26 @@ export function StubEngine({
   const [savedAssetId, setSavedAssetId] = useState<string | null>(null);
   const [output, setOutput] = useState<{ title: string; content: string } | null>(null);
 
+  // Reset state when the field set changes (engine switch within shared shell).
+  useEffect(() => {
+    setValues(initial);
+    setOutput(null);
+    setSavedAssetId(null);
+  }, [initial]);
+
   const set = (key: string, v: string) =>
     setValues((prev) => ({ ...prev, [key]: v }));
 
+  const requiredKeys = useMemo(
+    () => fields.filter((f) => f.required ?? !f.options).map((f) => f.key),
+    [fields],
+  );
+  const canGenerate =
+    requiredKeys.length === 0
+      ? false
+      : requiredKeys.every((k) => (values[k] ?? "").trim().length > 0);
+
   const firstFieldKey = fields[0]?.key;
-  const canGenerate = Boolean(firstFieldKey && values[firstFieldKey]?.trim().length);
 
   const handleGenerate = async () => {
     if (!canGenerate || !user) return;
@@ -195,19 +224,41 @@ export function StubEngine({
 
       <FormSection title="Inputs" description="These shape the generated output.">
         <div className="grid gap-4">
-          {fields.map((f) =>
-            f.textarea ? (
-              <div key={f.key} className="space-y-2">
-                <Label htmlFor={f.key}>{f.label}</Label>
-                <Textarea
-                  id={f.key}
-                  rows={3}
-                  placeholder={f.placeholder}
-                  value={values[f.key] ?? ""}
-                  onChange={(e) => set(f.key, e.target.value)}
-                />
-              </div>
-            ) : (
+          {fields.map((f) => {
+            if (f.options) {
+              return (
+                <div key={f.key} className="space-y-2">
+                  <Label htmlFor={f.key}>{f.label}</Label>
+                  <Select value={values[f.key] ?? ""} onValueChange={(v) => set(f.key, v)}>
+                    <SelectTrigger id={f.key}>
+                      <SelectValue placeholder={f.placeholder ?? "Select…"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {f.options.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>
+                          {o.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              );
+            }
+            if (f.textarea) {
+              return (
+                <div key={f.key} className="space-y-2">
+                  <Label htmlFor={f.key}>{f.label}</Label>
+                  <Textarea
+                    id={f.key}
+                    rows={3}
+                    placeholder={f.placeholder}
+                    value={values[f.key] ?? ""}
+                    onChange={(e) => set(f.key, e.target.value)}
+                  />
+                </div>
+              );
+            }
+            return (
               <div key={f.key} className="space-y-2">
                 <Label htmlFor={f.key}>{f.label}</Label>
                 <Input
@@ -217,8 +268,8 @@ export function StubEngine({
                   onChange={(e) => set(f.key, e.target.value)}
                 />
               </div>
-            ),
-          )}
+            );
+          })}
         </div>
       </FormSection>
 

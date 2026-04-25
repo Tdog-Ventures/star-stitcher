@@ -1,43 +1,58 @@
 import { StubEngine } from "@/components/engine/StubEngine";
+import {
+  BOTTLENECK_LABELS,
+  CHANNEL_LABELS,
+  formatGrowthPlan,
+  generateGrowthPlan,
+  type Bottleneck,
+  type CurrentChannel,
+} from "@/lib/engines/growth-hub";
 
 const GrowthHub = () => (
   <StubEngine
     engineKey="growth_hub"
     assetType="growth-plan"
     title="Growth Hub"
-    description="One-page growth plan: north-star metric, channels, weekly experiments."
-    intro="Pick one metric, three channels, three experiments. Ship weekly."
+    description="ICE-ranked experiment plan tied to your current bottleneck — not generic advice."
+    intro="Output: diagnosis, north-star metric, top-3 experiments, kill criteria, weekly ritual."
     sample={{
-      northStar: "Booked audit calls / week",
-      currentBaseline: "2 / week",
-      target: "10 / week in 30 days",
-      channels: "Cold email, LinkedIn DMs, X replies",
+      goal: "Get from 2 to 10 booked audit calls per week",
+      channel: "cold-email" satisfies CurrentChannel,
+      bottleneck: "low-conversion" satisfies Bottleneck,
     }}
     fields={[
-      { key: "northStar", label: "North-star metric" },
-      { key: "currentBaseline", label: "Current baseline" },
-      { key: "target", label: "30-day target" },
-      { key: "channels", label: "Top 3 channels" },
+      {
+        key: "goal",
+        label: "Growth goal",
+        placeholder: "Concrete outcome — number + timeframe",
+        required: true,
+      },
+      {
+        key: "channel",
+        label: "Current channel",
+        options: (Object.keys(CHANNEL_LABELS) as CurrentChannel[]).map((k) => ({
+          value: k,
+          label: CHANNEL_LABELS[k],
+        })),
+      },
+      {
+        key: "bottleneck",
+        label: "Bottleneck",
+        options: (Object.keys(BOTTLENECK_LABELS) as Bottleneck[]).map((k) => ({
+          value: k,
+          label: BOTTLENECK_LABELS[k],
+        })),
+      },
     ]}
-    buildTitle={(v) => `Growth: ${v.northStar || "Untitled metric"}`}
-    buildContent={(v) =>
-      [
-        `NORTH STAR: ${v.northStar}`,
-        `BASELINE: ${v.currentBaseline}`,
-        `TARGET (30d): ${v.target}`,
-        `CHANNELS: ${v.channels}`,
-        "",
-        "WEEKLY EXPERIMENTS:",
-        "Week 1 — Test one new hook on each channel, measure reply rate.",
-        "Week 2 — Double-down on winning channel, kill the worst.",
-        "Week 3 — Add one outbound + one inbound asset.",
-        "Week 4 — Recap, decide what becomes default playbook.",
-        "",
-        "RULES:",
-        "- One metric. One owner. One review per week.",
-        "- Kill any experiment that doesn't beat baseline in 2 weeks.",
-      ].join("\n")
-    }
+    buildTitle={(v) => `Growth: ${v.goal || "Untitled goal"}`}
+    buildContent={(v) => {
+      const input = {
+        goal: v.goal,
+        channel: v.channel as CurrentChannel,
+        bottleneck: v.bottleneck as Bottleneck,
+      };
+      return formatGrowthPlan(input, generateGrowthPlan(input));
+    }}
   />
 );
 

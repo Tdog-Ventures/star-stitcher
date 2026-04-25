@@ -1,53 +1,53 @@
 import { StubEngine } from "@/components/engine/StubEngine";
+import {
+  formatLaunchPlan,
+  generateLaunchPlan,
+  TIMEFRAME_LABELS,
+  type LaunchTimeframe,
+} from "@/lib/engines/creator-launchpad";
 
 const CreatorLaunchpad = () => (
   <StubEngine
     engineKey="creator_launchpad"
     assetType="launch-plan"
     title="Creator Launchpad"
-    description="A 14-day launch plan for a new offer, product, or content series."
-    intro="Day-by-day plan: pre-launch, launch week, post-launch."
+    description="Milestone-based launch roadmap: pre-launch, launch window, post-launch — sized to your timeframe."
+    intro="Output: dated milestones, success metric, and risk flags for the launch."
     sample={{
-      product: "Cold Email Audit ($299 one-off)",
-      audience: "B2B SaaS founders under $50k MRR",
-      goal: "Book 20 audit calls in 14 days",
-      channels: "X, LinkedIn, email list",
+      projectIdea: "Cold Email Audit ($299 one-off)",
+      timeframe: "30-days" satisfies LaunchTimeframe,
+      outcome: "Book 20 paid audits in 30 days",
     }}
     fields={[
-      { key: "product", label: "What you're launching", placeholder: "Offer / product / series" },
-      { key: "audience", label: "Target audience" },
-      { key: "goal", label: "Launch goal", placeholder: "Concrete outcome in numbers" },
-      { key: "channels", label: "Channels", placeholder: "Where you'll post" },
+      {
+        key: "projectIdea",
+        label: "Project idea",
+        placeholder: "What are you launching?",
+        required: true,
+      },
+      {
+        key: "timeframe",
+        label: "Launch timeframe",
+        options: (Object.keys(TIMEFRAME_LABELS) as LaunchTimeframe[]).map(
+          (k) => ({ value: k, label: TIMEFRAME_LABELS[k] }),
+        ),
+      },
+      {
+        key: "outcome",
+        label: "Target outcome",
+        placeholder: "Concrete result, in numbers",
+        required: true,
+      },
     ]}
-    buildTitle={(v) => `Launchpad: ${v.product || "Untitled launch"}`}
-    buildContent={(v) =>
-      [
-        `LAUNCH: ${v.product}`,
-        `AUDIENCE: ${v.audience}`,
-        `GOAL: ${v.goal}`,
-        `CHANNELS: ${v.channels}`,
-        "",
-        "PRE-LAUNCH (Day 1–4)",
-        "1. Tease the problem (no product mention)",
-        "2. Share a contrarian take on the topic",
-        "3. Open list / waitlist",
-        "4. Behind-the-scenes proof",
-        "",
-        "LAUNCH WEEK (Day 5–10)",
-        "5. Launch announcement post",
-        "6. Customer / case study story",
-        "7. Objection-handling content",
-        "8. Founder story: why now",
-        "9. Limited-time bonus / urgency",
-        "10. Direct CTA + social proof",
-        "",
-        "POST-LAUNCH (Day 11–14)",
-        "11. Recap + results",
-        "12. Lessons learned (build trust)",
-        "13. Next-step offer for non-buyers",
-        "14. Open feedback loop",
-      ].join("\n")
-    }
+    buildTitle={(v) => `Launch: ${v.projectIdea || "Untitled launch"}`}
+    buildContent={(v) => {
+      const input = {
+        projectIdea: v.projectIdea,
+        timeframe: v.timeframe as LaunchTimeframe,
+        outcome: v.outcome,
+      };
+      return formatLaunchPlan(input, generateLaunchPlan(input));
+    }}
   />
 );
 

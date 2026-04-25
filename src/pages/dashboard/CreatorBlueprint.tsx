@@ -1,36 +1,58 @@
 import { StubEngine } from "@/components/engine/StubEngine";
+import {
+  formatBlueprint,
+  generateBlueprint,
+  MONETISATION_LABELS,
+  type MonetisationGoal,
+} from "@/lib/engines/creator-blueprint";
 
 const CreatorBlueprint = () => (
   <StubEngine
     engineKey="creator_blueprint"
     assetType="blueprint"
     title="Creator Blueprint"
-    description="Map your creator brand: niche, pillars, audience, weekly cadence."
-    intro="A repeatable plan for what to post, why, and to whom."
+    description="Strategy blueprint that ties niche, audience and monetisation goal into one repeatable plan."
+    intro="Output: positioning, content pillars, weekly cadence, funnel, north-star metric, 90-day roadmap."
     sample={{
-      niche: "B2B SaaS founders going from $0 to $50k MRR",
-      pillars: "Cold outbound, offer design, founder storytelling",
+      niche: "Cold-email playbooks for B2B SaaS founders",
       audience: "Solo founders shipping their first paid product",
-      cadence: "3 short videos / week, 1 long-form / week",
+      monetisation: "services" satisfies MonetisationGoal,
     }}
     fields={[
-      { key: "niche", label: "Niche / positioning", placeholder: "Who you help and how" },
-      { key: "pillars", label: "Content pillars", placeholder: "3–5 themes you'll own" },
-      { key: "audience", label: "Target audience", placeholder: "Specific persona" },
-      { key: "cadence", label: "Weekly cadence", placeholder: "Posts per week per format" },
+      {
+        key: "niche",
+        label: "Niche",
+        placeholder: "What you teach / who you help and how",
+        required: true,
+      },
+      {
+        key: "audience",
+        label: "Audience",
+        placeholder: "Specific persona — role, stage, problem",
+        required: true,
+      },
+      {
+        key: "monetisation",
+        label: "Monetisation goal",
+        options: (Object.keys(MONETISATION_LABELS) as MonetisationGoal[]).map(
+          (k) => ({ value: k, label: MONETISATION_LABELS[k] }),
+        ),
+      },
     ]}
     buildTitle={(v) => `Blueprint: ${v.niche || "Untitled niche"}`}
     buildContent={(v) =>
-      [
-        `NICHE: ${v.niche}`,
-        "",
-        "PILLARS:",
-        ...v.pillars.split(/[,\n]/).filter(Boolean).map((p, i) => `${i + 1}. ${p.trim()}`),
-        "",
-        `AUDIENCE: ${v.audience}`,
-        "",
-        `CADENCE: ${v.cadence}`,
-      ].join("\n")
+      formatBlueprint(
+        {
+          niche: v.niche,
+          audience: v.audience,
+          monetisation: v.monetisation as MonetisationGoal,
+        },
+        generateBlueprint({
+          niche: v.niche,
+          audience: v.audience,
+          monetisation: v.monetisation as MonetisationGoal,
+        }),
+      )
     }
   />
 );
