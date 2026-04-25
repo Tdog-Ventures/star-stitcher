@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, act } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { deriveRenderUi } from "@/lib/render-state";
@@ -23,54 +23,52 @@ describe("deriveRenderUi", () => {
 // ---- Page-level render integration ----------------------------------------
 
 const ASSET_ID = "11111111-1111-1111-1111-111111111111";
-const sampleAsset = {
-  id: ASSET_ID,
-  title: "AI video ads for local businesses",
-  engine_key: "video_forge",
-  channel: "YouTube",
-  status: "draft",
-  source_record_id: null,
-  created_at: new Date().toISOString(),
-  updated_at: new Date().toISOString(),
-  content: JSON.stringify({
-    v: 1,
-    engine_key: "video_forge",
-    type: "video_script",
-    output: {
-      mode: "short_form",
-      full_script: "Hook line. Body. CTA.",
-      scene_breakdown: [{ duration_seconds: 10 }],
-      stock_footage_terms: ["small business", "automation"],
-      voiceover_notes: { tone: "bold" },
-      captions: { short_caption: "Short", long_caption: "Long" },
-    },
-    markdown: "# fake\n",
-  }),
-  render_job_id: null as string | null,
-  rendered_video_url: null as string | null,
-  render_status: null as string | null,
-};
 
-const invokeMock = vi.fn();
-const updateMock = vi.fn(() => ({ eq: () => Promise.resolve({ data: null, error: null }) }));
+// Hoisted state shared with the supabase mock factory.
+const h = vi.hoisted(() => {
+  const sampleAsset = {
+    id: "11111111-1111-1111-1111-111111111111",
+    title: "AI video ads for local businesses",
+    engine_key: "video_forge",
+    channel: "YouTube",
+    status: "draft",
+    source_record_id: null as string | null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    content: JSON.stringify({
+      v: 1,
+      engine_key: "video_forge",
+      type: "video_script",
+      output: {
+        mode: "short_form",
+        full_script: "Hook line. Body. CTA.",
+        scene_breakdown: [{ duration_seconds: 10 }],
+        stock_footage_terms: ["small business", "automation"],
+        voiceover_notes: { tone: "bold" },
+        captions: { short_caption: "Short", long_caption: "Long" },
+      },
+      markdown: "# fake\n",
+    }),
+    render_job_id: null as string | null,
+    rendered_video_url: null as string | null,
+    render_status: null as string | null,
+  };
+  return {
+    sampleAsset,
+    invokeMock: vi.fn(),
+  };
+});
 
 vi.mock("@/integrations/supabase/client", () => {
-  const tableData: Record<string, unknown[]> = {
-    assets: [sampleAsset],
-    distribution_tasks: [],
-    user_roles: [{ role: "user" }],
-  };
-
   const fromAssets = () => {
-    const result: Promise<{ data: unknown; error: null }> & Record<string, unknown> =
-      Promise.resolve({ data: tableData.assets, error: null }) as never;
+    const order = () => Promise.resolve({ data: [h.sampleAsset], error: null });
     const chain = {
       select: () => chain,
       eq: () => chain,
-      order: () => Promise.resolve({ data: tableData.assets, error: null }),
-      update: updateMock,
+      order,
+      update: () => ({ eq: () => Promise.resolve({ data: null, error: null }) }),
     };
-    return Object.assign(result, chain);
+    return chain;
   };
 
   return {
@@ -96,30 +94,26 @@ vi.mock("@/integrations/supabase/client", () => {
       from: (table: string) => {
         if (table === "assets") return fromAssets();
         if (table === "user_roles") {
-          const c = {
+          const c: Record<string, unknown> = {
             select: () => c,
             eq: () => Promise.resolve({ data: [{ role: "user" }], error: null }),
           };
           return c;
         }
-        const c = {
+        const c: Record<string, unknown> = {
           select: () => c,
           eq: () => c,
           order: () => Promise.resolve({ data: [], error: null }),
-          insert: () => ({
-            select: () => ({ single: () => Promise.resolve({ data: { id: "t1" }, error: null }) }),
-          }),
         };
         return c;
       },
       functions: {
-        invoke: (...args: unknown[]) => invokeMock(...args),
+        invoke: (...args: unknown[]) => h.invokeMock(...args),
       },
     },
   };
 });
 
-// Lightweight stubs for the bits the page imports but we don't need to render.
 vi.mock("@/lib/analytics", () => ({ trackEvent: () => Promise.resolve() }));
 
 import GeneratedVideos from "@/pages/dashboard/GeneratedVideos";
@@ -133,11 +127,10 @@ const renderPage = () =>
 
 describe("GeneratedVideos — FacelessForge render integration (stub)", () => {
   beforeEach(() => {
-    invokeMock.mockReset();
-    updateMock.mockClear();
-    sampleAsset.render_job_id = null;
-    sampleAsset.rendered_video_url = null;
-    sampleAsset.render_status = null;
+    h.invokeMock.mockReset();
+    h.sampleAsset.render_job_id = null;
+    h.sampleAsset.rendered_video_url = null;
+    h.sampleAsset.render_status = null;
   });
 
   it("shows the stub banner so users know no MP4 is produced", async () => {
@@ -148,7 +141,7 @@ describe("GeneratedVideos — FacelessForge render integration (stub)", () => {
 
   it("invokes render-video with the full payload when clicked", async () => {
     const user = userEvent.setup();
-    invokeMock.mockResolvedValueOnce({
+    h.invokeMock.mockResolvedValueOnce({
       data: { job_id: "stub_xyz", status: "pending", stub: true },
       error: null,
     });
@@ -157,12 +150,15 @@ describe("GeneratedVideos — FacelessForge render integration (stub)", () => {
     const btn = await screen.findByTestId("render-video");
     await user.click(btn);
 
-    await waitFor(() => expect(invokeMock).toHaveBeenCalled());
-    const [fnName, opts] = invokeMock.mock.calls[0] as [string, { body: Record<string, unknown> }];
+    await waitFor(() => expect(h.invokeMock).toHaveBeenCalled());
+    const [fnName, opts] = h.invokeMock.mock.calls[0] as [
+      string,
+      { body: Record<string, unknown> },
+    ];
     expect(fnName).toBe("render-video");
     expect(opts.body).toMatchObject({
       asset_id: ASSET_ID,
-      title: sampleAsset.title,
+      title: h.sampleAsset.title,
       script: "Hook line. Body. CTA.",
       stock_footage_terms: ["small business", "automation"],
       captions: { short_caption: "Short", long_caption: "Long" },
@@ -170,38 +166,26 @@ describe("GeneratedVideos — FacelessForge render integration (stub)", () => {
     expect(Array.isArray(opts.body.scene_breakdown)).toBe(true);
   });
 
-  it("never renders a Download MP4 button while in stub mode (no rendered_video_url)", async () => {
-    // Simulate the post-click DB state: job_id stored, url still null.
-    sampleAsset.render_job_id = "stub_persisted";
-    sampleAsset.rendered_video_url = null;
-
-    invokeMock.mockResolvedValue({
+  it("never shows Download MP4 in stub mode (rendered_video_url stays null)", async () => {
+    h.sampleAsset.render_job_id = "stub_persisted";
+    h.sampleAsset.rendered_video_url = null;
+    h.invokeMock.mockResolvedValue({
       data: { job_id: "stub_persisted", status: "completed", video_url: null, stub: true },
       error: null,
     });
 
     renderPage();
-    // Button is in "rendering" state because job_id exists but url is null.
     expect(await screen.findByTestId("render-pending")).toBeInTheDocument();
-    // Critically: never claims an MP4 exists.
     expect(screen.queryByTestId("download-mp4")).not.toBeInTheDocument();
-    // Banner must remain visible.
     expect(screen.getByTestId("render-stub-banner")).toBeInTheDocument();
   });
 
-  it("shows Download MP4 only once rendered_video_url is populated (real-mode scenario)", async () => {
-    sampleAsset.render_job_id = "real_job";
-    sampleAsset.rendered_video_url = "https://cdn.example.com/video.mp4";
+  it("shows Download MP4 only once rendered_video_url is populated", async () => {
+    h.sampleAsset.render_job_id = "real_job";
+    h.sampleAsset.rendered_video_url = "https://cdn.example.com/video.mp4";
 
     renderPage();
     const link = await screen.findByTestId("download-mp4");
     expect(link).toHaveAttribute("href", "https://cdn.example.com/video.mp4");
   });
 });
-
-// Suppress noisy timers if any test added them.
-afterAllReset();
-function afterAllReset() {
-  // no-op placeholder; vitest's afterAll not needed since tests don't install timers.
-  void act;
-}
