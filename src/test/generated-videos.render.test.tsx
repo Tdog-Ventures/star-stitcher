@@ -117,11 +117,14 @@ vi.mock("@/integrations/supabase/client", () => {
 vi.mock("@/lib/analytics", () => ({ trackEvent: () => Promise.resolve() }));
 
 import GeneratedVideos from "@/pages/dashboard/GeneratedVideos";
+import { AuthProvider } from "@/providers/AuthProvider";
 
 const renderPage = () =>
   render(
     <MemoryRouter>
-      <GeneratedVideos />
+      <AuthProvider>
+        <GeneratedVideos />
+      </AuthProvider>
     </MemoryRouter>,
   );
 
