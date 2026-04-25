@@ -301,7 +301,7 @@ const GeneratedVideos = () => {
         });
         if (error) continue;
         const status = (data as { status?: string } | null)?.status;
-        if (status === "completed" || status === "failed") {
+        if (status === "completed" || status === "failed" || status === "cancelled") {
           setPolling((p) => {
             const n = new Set(p);
             n.delete(id);
