@@ -618,13 +618,26 @@ function buildSceneBreakdown(
   const count = sceneCountForMode(mode, input.target_length);
   const scenes = seeds.slice(0, count);
   const total = approxDurationSeconds(mode, input.target_length);
-  const per = total / scenes.length;
 
+  // Distribute total seconds evenly across scenes. Remaining seconds (from
+  // integer flooring) are spread one-by-one to the earliest scenes so the
+  // sum of durations exactly matches `total`.
+  const n = scenes.length;
+  const base = Math.floor(total / n);
+  const remainder = total - base * n;
+  const durations = scenes.map((_, i) => base + (i < remainder ? 1 : 0));
+
+  let cursor = 0;
   return scenes.map((s, i) => {
-    const start = Math.round(i * per);
+    const start = cursor;
+    const dur = durations[i];
+    const end = start + dur;
+    cursor = end;
     return {
       scene_number: i + 1,
       timecode: timecode(start),
+      end_timecode: timecode(end),
+      duration_seconds: dur,
       scene_purpose: s.purpose,
       narration:
         s.narrationKey === "custom" && s.customNarration
