@@ -302,36 +302,36 @@ function buildCta(input: VideoForgeInput, mode: VideoMode): string {
 
   if (mode === "long_form") {
     if (input.video_goal === "sales" || input.video_goal === "product_demo") {
-      return `If this is the loop you want to run, the link in the description is the fastest way in. Subscribe so you don't miss the follow-up where I break down the week-2 numbers.`;
+      return `If this is the loop you want to run, the link in the description gets you started in two minutes. Subscribe so you don't miss the week-2 numbers — that's where it gets interesting.`;
     }
-    return `If this changed how you think about ${topic}, hit subscribe — the next video goes deeper on the week-2 review. And drop one word in the comments: which step are you running first?`;
+    return `If this changed how you think about ${topic}, hit subscribe — the next video breaks down the week-2 review. And drop one word below: which step are you running first?`;
   }
 
   if (mode === "faceless") {
-    return `Save this. Run the loop once. Comment "${topic}" when you do — I'll send the template.`;
+    return `Save this. Run the loop once this week. Comment "LOOP" and I'll send you the one-page template.`;
   }
 
   if (mode === "product_demo") {
-    return `Try it free with the link below. If you want a 5-minute walkthrough live, DM "${topic}" and we'll book it.`;
+    return `Start free with the link below — no card, no email wall. Want a 5-minute walkthrough live? DM "DEMO" and we'll book it.`;
   }
 
   // short_form: tighter CTAs
   switch (input.video_goal) {
     case "sales":
-      return `Link in bio. Start ${topic} this week.`;
+      return `Link in bio. Start ${topic} this week — the offer expires Sunday.`;
     case "marketing":
-      return `Follow for more. DM "${topic}" for the playbook.`;
+      return `Comment "PLAYBOOK" and I'll send you the one-page version of this — free, no email.`;
     case "education":
     case "tutorial":
-      return `Save this. Run it next time you touch ${topic}.`;
+      return `Save this so you actually do it. Run the 3 steps next time you touch ${topic}.`;
     case "thought_leadership":
-      return `Share with one ${who} who needs this.`;
+      return `Send this to one ${who} who needs to hear it. That's the share.`;
     case "entertainment":
-      return `Follow if you want more like this.`;
+      return `Follow for one more like this every Tuesday.`;
     case "product_demo":
-      return `Link in bio — try it free.`;
+      return `Link in bio — free trial, two-click setup.`;
     default:
-      return `Follow for more on ${topic}.`;
+      return `Comment "${topic.split(" ")[0].toUpperCase()}" and I'll send you the next step.`;
   }
 }
 
