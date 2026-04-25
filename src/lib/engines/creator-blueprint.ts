@@ -1,5 +1,6 @@
 // Creator Blueprint — turns niche + audience + monetisation goal
 // into a structured creator strategy blueprint.
+import { formatFooter } from "./output-footer";
 
 export type MonetisationGoal =
   | "audience"
