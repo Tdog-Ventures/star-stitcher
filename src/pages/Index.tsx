@@ -121,9 +121,8 @@ const Index = () => {
               </p>
 
               <p className="max-w-xl text-sm text-muted-foreground md:text-base">
-                Forge scripts, scenes, captions, batches, briefs and launch plans
-                from a single workspace. Every output is structured, saved, and
-                ready to ship.
+                Generate complete video systems — scripts, scenes, visuals, and
+                distribution — from one control layer.
               </p>
 
               <div className="flex flex-wrap items-center gap-3 pt-2">
