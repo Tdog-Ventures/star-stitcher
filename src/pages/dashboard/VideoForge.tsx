@@ -26,6 +26,7 @@ import {
   TONE_LABELS,
   formatVideoForge,
   generateVideoForge,
+  validateVideoForgeOutput,
   type VideoForgeInput,
   type VideoForgeOutput,
   type VideoFormat,
