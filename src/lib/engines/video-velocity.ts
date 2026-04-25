@@ -166,13 +166,13 @@ export function generateBatch(input: VelocityInput): VelocityBatch {
   const videos: VelocityVideo[] = selected.map((a, i) => ({
     index: i + 1,
     angle: a.kind,
-    workingTitle: a.template(topic),
-    hook: `${a.kind === "Mistake" ? "Stop." : a.kind === "Contrarian" ? "Hot take:" : "Quick one:"} ${a.template(topic).toLowerCase()}.`,
-    beat1: `Name it — be specific about ${topic}, no generic advice.`,
-    beat2: `Show it — give one concrete example or number tied to ${topic}.`,
+    workingTitle: a.title(topic),
+    hook: a.hook(topic),
+    beat1: a.beat1(topic),
+    beat2: a.beat2(topic),
     cta: i === count - 1
       ? `Follow for the full ${topic} series — DM "${topic}" for the playbook.`
-      : `Save this for later. Tomorrow: ${selected[i + 1]?.kind ?? "next angle"}.`,
+      : `Save this. Tomorrow: ${selected[i + 1]?.kind ?? "next angle"}.`,
   }));
 
   const minutesPerVideo = 12; // rough one-take + reset budget
