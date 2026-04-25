@@ -961,15 +961,20 @@ export function formatVideoForge(input: VideoForgeInput, out: VideoForgeOutput):
     `CTA:      ${out.script_sections.cta}`,
     "",
     "SCENE BREAKDOWN",
-    ...out.scene_breakdown.flatMap((s) => [
-      `--- Scene ${s.scene_number} · ${s.timecode} · ${s.scene_purpose} ---`,
-      `Narration: ${s.narration}`,
-      `Visual:    ${s.suggested_visual}`,
-      `Stock/B-roll search: ${s.b_roll_or_stock_query}`,
-      `On-screen: ${s.on_screen_text || "—"}`,
-      `VO note:   ${s.voiceover_note}`,
-      "",
-    ]),
+    ...out.scene_breakdown.flatMap((s) => {
+      const range = s.end_timecode ? `${s.timecode}–${s.end_timecode}` : s.timecode;
+      const dur =
+        typeof s.duration_seconds === "number" ? ` (~${s.duration_seconds}s)` : "";
+      return [
+        `--- Scene ${s.scene_number} · ${range}${dur} · ${s.scene_purpose} ---`,
+        `Narration: ${s.narration}`,
+        `Visual:    ${s.suggested_visual}`,
+        `Stock/B-roll search: ${s.b_roll_or_stock_query}`,
+        `On-screen: ${s.on_screen_text || "—"}`,
+        `VO note:   ${s.voiceover_note}`,
+        "",
+      ];
+    }),
     "STOCK FOOTAGE / B-ROLL SEARCH TERMS",
     ...out.stock_footage_terms.map((t, i) => `${i + 1}. ${t}`),
     "",
