@@ -133,8 +133,8 @@ const Index = () => {
                   </Link>
                 </Button>
                 <Button asChild size="lg" variant="outline">
-                  <Link to={user ? "/engines" : "/login"}>
-                    {user ? "All engines" : "Sign in"}
+                  <Link to="/engines">
+                    Explore Engines
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 </Button>
