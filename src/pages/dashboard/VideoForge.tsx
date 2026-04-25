@@ -138,7 +138,7 @@ const VideoForge = () => {
       aside={
         <PreviewCard
           title={output?.title || fields.topic || "Untitled video"}
-          status={savedAssetId ? "saved" : "draft"}
+          status={savedAssetId ? "ready" : "draft"}
           meta={`${GOAL_LABELS[fields.goal]} · ${TONE_LABELS[fields.tone]} · ${LENGTH_LABELS[fields.length]}`}
         >
           {output ? (
