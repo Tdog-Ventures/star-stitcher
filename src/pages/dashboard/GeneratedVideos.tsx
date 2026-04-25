@@ -481,20 +481,6 @@ const GeneratedVideos = () => {
         </Button>
       }
     >
-      <div
-        role="status"
-        data-testid="render-stub-banner"
-        className="mb-4 flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-900 dark:text-amber-200"
-      >
-        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-        <div>
-          <p className="font-medium">Render integration stub</p>
-          <p className="text-amber-900/80 dark:text-amber-200/80">
-            Real FacelessForge API not connected yet. Render buttons exercise the full
-            pipeline (asset → edge function → job id → polling), but no MP4 is produced.
-          </p>
-        </div>
-      </div>
       {loading ? (
         <div className="rounded-lg border border-dashed border-border bg-card p-10 text-center text-sm text-muted-foreground">
           Loading…
@@ -547,7 +533,7 @@ const GeneratedVideos = () => {
                         return (
                           <p className="text-[11px] text-muted-foreground">
                             <Sparkles className="mr-1 inline h-3 w-3" aria-hidden="true" />
-                            MP4 attached.
+                            MP4 attached — rendered by FacelessForge.
                           </p>
                         );
                       }
@@ -555,14 +541,22 @@ const GeneratedVideos = () => {
                         return (
                           <p className="text-[11px] text-muted-foreground">
                             <Loader2 className="mr-1 inline h-3 w-3 animate-spin" aria-hidden="true" />
-                            Rendering — stub will mark complete on next poll. No MP4 file.
+                            Rendering with FacelessForge — checking status every 5s.
+                          </p>
+                        );
+                      }
+                      if (renderUi === "failed") {
+                        return (
+                          <p className="text-[11px] text-destructive">
+                            <AlertTriangle className="mr-1 inline h-3 w-3" aria-hidden="true" />
+                            Render failed. Try again.
                           </p>
                         );
                       }
                       return (
                         <p className="text-[11px] text-muted-foreground">
                           <Film className="mr-1 inline h-3 w-3" aria-hidden="true" />
-                          Render via FacelessForge (stub — no MP4 yet).
+                          Render this script into an MP4 with FacelessForge.
                         </p>
                       );
                     })()}
@@ -615,6 +609,24 @@ const GeneratedVideos = () => {
                           <Button size="sm" variant="outline" disabled data-testid="render-pending">
                             <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
                             Rendering…
+                          </Button>
+                        );
+                      }
+                      if (renderUi === "failed") {
+                        return (
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleRetry(rec, meta)}
+                            disabled={isSubmitting}
+                            data-testid="render-retry"
+                          >
+                            {isSubmitting ? (
+                              <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <AlertTriangle className="mr-2 h-3.5 w-3.5" />
+                            )}
+                            Retry render
                           </Button>
                         );
                       }
