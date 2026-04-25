@@ -9,6 +9,7 @@ import {
   Plus,
   RotateCcw,
   Send,
+  Video,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +28,12 @@ import {
 } from "@/lib/onboarding";
 
 const QUICK_ACTIONS = [
+  {
+    to: "/engines/video-forge",
+    title: "Create video script",
+    description: "Open Video Forge and generate a structured script.",
+    icon: Video,
+  },
   {
     to: "/engines/offer",
     title: "Create offer",
