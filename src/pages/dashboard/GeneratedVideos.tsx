@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   AlertTriangle,
+  Ban,
   Download,
   Eye,
   FileText,
@@ -12,6 +13,7 @@ import {
   Sparkles,
   Subtitles,
   Video as VideoIcon,
+  XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -195,9 +197,10 @@ const GeneratedVideos = () => {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewAsset, setPreviewAsset] = useState<AssetRecord | null>(null);
 
-  // render integration (FacelessForge — currently STUB)
+  // render integration (FacelessForge — LIVE)
   const [polling, setPolling] = useState<Set<string>>(new Set());
   const [renderingNow, setRenderingNow] = useState<Set<string>>(new Set());
+  const [cancellingNow, setCancellingNow] = useState<Set<string>>(new Set());
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = async () => {
@@ -298,7 +301,7 @@ const GeneratedVideos = () => {
         });
         if (error) continue;
         const status = (data as { status?: string } | null)?.status;
-        if (status === "completed" || status === "failed") {
+        if (status === "completed" || status === "failed" || status === "cancelled") {
           setPolling((p) => {
             const n = new Set(p);
             n.delete(id);
@@ -386,6 +389,70 @@ const GeneratedVideos = () => {
       .eq("id", rec.id);
     await load();
     await handleRender({ ...rec, render_job_id: null, rendered_video_url: null, render_status: null }, meta);
+  };
+
+  const handleCancel = async (rec: AssetRecord) => {
+    if (!user || !rec.render_job_id) return;
+    if (cancellingNow.has(rec.id)) return;
+    setCancellingNow((s) => new Set(s).add(rec.id));
+
+    const { data, error } = await supabase.functions.invoke("render-video-cancel", {
+      body: { job_id: rec.render_job_id, asset_id: rec.id },
+    });
+
+    setCancellingNow((s) => {
+      const n = new Set(s);
+      n.delete(rec.id);
+      return n;
+    });
+
+    if (error) {
+      toast({
+        title: "Cancel failed",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+    const payload = (data ?? {}) as {
+      status?: string;
+      already_terminal?: boolean;
+      rendered_video_url?: string | null;
+    };
+    const finalStatus = payload.status ?? "cancelled";
+
+    // Optimistic UI: reflect final state immediately.
+    setRows((prev) =>
+      prev.map((r) =>
+        r.id === rec.id
+          ? {
+              ...r,
+              render_status: finalStatus,
+              rendered_video_url: payload.rendered_video_url ?? r.rendered_video_url,
+            }
+          : r,
+      ),
+    );
+
+    // Stop polling for this asset — terminal state reached.
+    setPolling((p) => {
+      const n = new Set(p);
+      n.delete(rec.id);
+      return n;
+    });
+
+    if (payload.already_terminal) {
+      toast({
+        title: "Already finished",
+        description: `Job already ${finalStatus}, nothing to cancel.`,
+      });
+    } else {
+      toast({
+        title: "Render cancelled",
+        description: `Job ${rec.render_job_id} cancelled.`,
+      });
+    }
+    await load();
   };
 
 
@@ -553,6 +620,14 @@ const GeneratedVideos = () => {
                           </p>
                         );
                       }
+                      if (renderUi === "cancelled") {
+                        return (
+                          <p className="text-[11px] text-muted-foreground">
+                            <Ban className="mr-1 inline h-3 w-3" aria-hidden="true" />
+                            Render cancelled. You can start a new render.
+                          </p>
+                        );
+                      }
                       return (
                         <p className="text-[11px] text-muted-foreground">
                           <Film className="mr-1 inline h-3 w-3" aria-hidden="true" />
@@ -589,6 +664,7 @@ const GeneratedVideos = () => {
                     {(() => {
                       const renderUi = deriveRenderUi(rec);
                       const isSubmitting = renderingNow.has(rec.id);
+                      const isCancelling = cancellingNow.has(rec.id);
                       if (renderUi === "complete" && rec.rendered_video_url) {
                         return (
                           <Button asChild size="sm" variant="default">
@@ -606,27 +682,45 @@ const GeneratedVideos = () => {
                       }
                       if (renderUi === "rendering") {
                         return (
-                          <Button size="sm" variant="outline" disabled data-testid="render-pending">
-                            <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                            Rendering…
-                          </Button>
+                          <>
+                            <Button size="sm" variant="outline" disabled data-testid="render-pending">
+                              <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                              Rendering…
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleCancel(rec)}
+                              disabled={isCancelling}
+                              data-testid="render-cancel"
+                            >
+                              {isCancelling ? (
+                                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <XCircle className="mr-2 h-3.5 w-3.5" />
+                              )}
+                              Cancel render
+                            </Button>
+                          </>
                         );
                       }
-                      if (renderUi === "failed") {
+                      if (renderUi === "failed" || renderUi === "cancelled") {
                         return (
                           <Button
                             size="sm"
-                            variant="destructive"
+                            variant={renderUi === "failed" ? "destructive" : "outline"}
                             onClick={() => handleRetry(rec, meta)}
                             disabled={isSubmitting}
-                            data-testid="render-retry"
+                            data-testid={renderUi === "failed" ? "render-retry" : "render-restart"}
                           >
                             {isSubmitting ? (
                               <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                            ) : (
+                            ) : renderUi === "failed" ? (
                               <AlertTriangle className="mr-2 h-3.5 w-3.5" />
+                            ) : (
+                              <Film className="mr-2 h-3.5 w-3.5" />
                             )}
-                            Retry render
+                            {renderUi === "failed" ? "Retry render" : "Render again"}
                           </Button>
                         );
                       }

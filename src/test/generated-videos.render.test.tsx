@@ -39,6 +39,15 @@ describe("deriveRenderUi", () => {
       }),
     ).toBe("failed");
   });
+  it("returns cancelled when render_status is cancelled and no url", () => {
+    expect(
+      deriveRenderUi({
+        render_job_id: "job_abc",
+        rendered_video_url: null,
+        render_status: "cancelled",
+      }),
+    ).toBe("cancelled");
+  });
 });
 
 // ---- Page-level render integration ----------------------------------------
@@ -216,6 +225,51 @@ describe("GeneratedVideos — FacelessForge render integration (live)", () => {
     renderPage();
     expect(await screen.findByTestId("render-retry")).toBeInTheDocument();
     expect(screen.getByText(/Render failed\. Try again\./i)).toBeInTheDocument();
+  });
+
+  it("shows a Cancel render button while a job is running and invokes the cancel function", async () => {
+    const user = userEvent.setup();
+    h.sampleAsset.render_job_id = "ff_inflight";
+    h.sampleAsset.render_status = "running";
+    h.sampleAsset.rendered_video_url = null;
+
+    h.invokeMock.mockImplementation((fnName: string) => {
+      if (fnName === "render-video-cancel") {
+        return Promise.resolve({
+          data: { job_id: "ff_inflight", status: "cancelled", already_terminal: false },
+          error: null,
+        });
+      }
+      // status poll
+      return Promise.resolve({
+        data: { job_id: "ff_inflight", status: "running", video_url: null },
+        error: null,
+      });
+    });
+
+    renderPage();
+    const cancelBtn = await screen.findByTestId("render-cancel");
+    await user.click(cancelBtn);
+
+    await waitFor(() =>
+      expect(
+        h.invokeMock.mock.calls.some(([name]) => name === "render-video-cancel"),
+      ).toBe(true),
+    );
+    const cancelCall = h.invokeMock.mock.calls.find(([name]) => name === "render-video-cancel");
+    expect(cancelCall?.[1]).toMatchObject({
+      body: { job_id: "ff_inflight", asset_id: ASSET_ID },
+    });
+  });
+
+  it("shows a Render again button when render_status is cancelled", async () => {
+    h.sampleAsset.render_job_id = "ff_cancelled";
+    h.sampleAsset.render_status = "cancelled";
+    h.sampleAsset.rendered_video_url = null;
+
+    renderPage();
+    expect(await screen.findByTestId("render-restart")).toBeInTheDocument();
+    expect(screen.getByText(/Render cancelled/i)).toBeInTheDocument();
   });
 });
 
