@@ -21,6 +21,7 @@ import {
   FORMAT_LABELS,
   GOAL_LABELS,
   LENGTH_LABELS,
+  MODE_LABELS,
   PLATFORM_LABELS,
   TONE_LABELS,
   formatVideoForge,
@@ -30,6 +31,7 @@ import {
   type VideoFormat,
   type VideoGoal,
   type VideoLength,
+  type VideoMode,
   type VideoPlatform,
   type VideoTone,
 } from "@/lib/video-forge";
