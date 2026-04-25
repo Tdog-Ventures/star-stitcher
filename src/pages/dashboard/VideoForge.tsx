@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Save, Send, Sparkles, Wand2 } from "lucide-react";
+import { AlertTriangle, ArrowRight, Save, Send, Sparkles, Wand2 } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,6 +30,7 @@ import {
   validateVideoForgeOutput,
   type VideoForgeInput,
   type VideoForgeOutput,
+  type VideoForgeValidationIssue,
   type VideoFormat,
   type VideoGoal,
   type VideoLength,
@@ -69,6 +71,7 @@ const VideoForge = () => {
   const [output, setOutput] = useState<VideoForgeOutput | null>(null);
   const [saving, setSaving] = useState(false);
   const [savedAssetId, setSavedAssetId] = useState<string | null>(null);
+  const [validationIssues, setValidationIssues] = useState<VideoForgeValidationIssue[]>([]);
 
   const set = <K extends keyof VideoForgeInput>(key: K, value: VideoForgeInput[K]) =>
     setFields((prev) => ({ ...prev, [key]: value }));
@@ -79,6 +82,7 @@ const VideoForge = () => {
     if (!canGenerate || !user) return;
     setSaving(true);
     setSavedAssetId(null);
+    setValidationIssues([]);
 
     const result = generateVideoForge(fields);
     setOutput(result);
@@ -88,9 +92,10 @@ const VideoForge = () => {
     const validation = validateVideoForgeOutput(result);
     if (!validation.ok) {
       setSaving(false);
+      setValidationIssues(validation.issues);
       toast({
         title: "Video plan is incomplete — not saved",
-        description: validation.errors.slice(0, 4).join(" · "),
+        description: `${validation.issues.length} issue${validation.issues.length === 1 ? "" : "s"} found. See the validation panel below.`,
         variant: "destructive",
       });
       return;
@@ -143,6 +148,7 @@ const VideoForge = () => {
     setFields(SAMPLE);
     setOutput(null);
     setSavedAssetId(null);
+    setValidationIssues([]);
     toast({ title: "Sample loaded", description: "Tweak any field, then generate." });
   };
 
@@ -150,6 +156,7 @@ const VideoForge = () => {
     setFields(EMPTY);
     setOutput(null);
     setSavedAssetId(null);
+    setValidationIssues([]);
   };
 
   return (
@@ -196,6 +203,40 @@ const VideoForge = () => {
         </PreviewCard>
       }
     >
+      {validationIssues.length > 0 ? (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>
+            Save blocked — {validationIssues.length} issue
+            {validationIssues.length === 1 ? "" : "s"} to fix
+          </AlertTitle>
+          <AlertDescription>
+            <p className="mb-2 text-sm">
+              The video plan was generated but not saved. Fix the items below
+              (or tweak the form and regenerate) before this can be saved as an
+              asset.
+            </p>
+            <ul className="space-y-2">
+              {validationIssues.map((issue, i) => (
+                <li
+                  key={`${issue.path}-${i}`}
+                  className="rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs"
+                >
+                  <code className="block font-mono text-[11px] font-semibold text-foreground">
+                    {issue.path}
+                  </code>
+                  <p className="mt-1 text-foreground">{issue.reason}</p>
+                  <p className="mt-1 text-muted-foreground">
+                    <span className="font-medium text-foreground">Fix: </span>
+                    {issue.fix}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
       {savedAssetId ? (
         <div className="rounded-lg border border-primary/40 bg-primary/5 p-4">
           <p className="text-sm font-semibold text-foreground">
@@ -403,35 +444,83 @@ const VideoForge = () => {
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Scene breakdown ({output.scene_breakdown.length})
               </p>
-              <ol className="mt-1 list-decimal space-y-3 pl-5 text-foreground">
-                {output.scene_breakdown.map((s) => (
-                  <li key={s.scene_number}>
-                    <div>
-                      <span className="font-medium">
-                        {s.timecode}
-                        {s.end_timecode ? `–${s.end_timecode}` : ""} · {s.scene_purpose}
-                      </span>
-                      {typeof s.duration_seconds === "number" ? (
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          (~{s.duration_seconds}s)
+              <ol className="mt-2 space-y-3">
+                {output.scene_breakdown.map((s) => {
+                  const range = s.end_timecode
+                    ? `${s.timecode} → ${s.end_timecode}`
+                    : s.timecode;
+                  const dur =
+                    typeof s.duration_seconds === "number"
+                      ? `${s.duration_seconds}s`
+                      : null;
+                  return (
+                    <li
+                      key={s.scene_number}
+                      className="rounded-md border border-border bg-card p-3"
+                    >
+                      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-xs font-semibold text-muted-foreground">
+                            Scene {s.scene_number}
+                          </span>
+                          <span className="font-mono text-sm font-medium text-foreground">
+                            {range}
+                          </span>
+                          {dur ? (
+                            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                              {dur}
+                            </span>
+                          ) : null}
+                        </div>
+                        <span className="text-xs font-medium text-foreground">
+                          {s.scene_purpose}
                         </span>
-                      ) : null}
-                    </div>
-                    <div className="text-muted-foreground">{s.narration}</div>
-                    <div className="text-xs text-muted-foreground">
-                      Visual: {s.suggested_visual}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Stock/B-roll: <code>{s.b_roll_or_stock_query}</code>
-                    </div>
-                    {s.on_screen_text ? (
-                      <div className="text-xs text-muted-foreground">
-                        On-screen: "{s.on_screen_text}"
                       </div>
-                    ) : null}
-                    <div className="text-xs text-muted-foreground">VO: {s.voiceover_note}</div>
-                  </li>
-                ))}
+                      <dl className="mt-3 grid gap-2 text-xs">
+                        <div>
+                          <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                            Narration
+                          </dt>
+                          <dd className="mt-0.5 text-foreground">{s.narration}</dd>
+                        </div>
+                        {s.on_screen_text ? (
+                          <div>
+                            <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                              On-screen text
+                            </dt>
+                            <dd className="mt-0.5 text-foreground">"{s.on_screen_text}"</dd>
+                          </div>
+                        ) : null}
+                        <div>
+                          <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                            Suggested visual
+                          </dt>
+                          <dd className="mt-0.5 text-muted-foreground">
+                            {s.suggested_visual}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                            Stock / B-roll
+                          </dt>
+                          <dd className="mt-0.5">
+                            <code className="text-muted-foreground">
+                              {s.b_roll_or_stock_query}
+                            </code>
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                            Voiceover note
+                          </dt>
+                          <dd className="mt-0.5 text-muted-foreground">
+                            {s.voiceover_note}
+                          </dd>
+                        </div>
+                      </dl>
+                    </li>
+                  );
+                })}
               </ol>
             </div>
 

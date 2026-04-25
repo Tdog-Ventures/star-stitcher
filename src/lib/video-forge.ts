@@ -1016,8 +1016,23 @@ export function formatVideoForge(input: VideoForgeInput, out: VideoForgeOutput):
 // and that every scene carries the production fields a creator needs to
 // actually film. Returns a list of human-readable errors; empty list = ok.
 
+/**
+ * One structured validation problem. `path` is a JSON-pointer-ish field
+ * locator (e.g. `scene_breakdown[2].narration`), `reason` is a short
+ * human-readable explanation, `fix` is a one-line suggestion the UI can
+ * surface verbatim.
+ */
+export interface VideoForgeValidationIssue {
+  path: string;
+  reason: string;
+  fix: string;
+}
+
 export interface VideoForgeValidationResult {
   ok: boolean;
+  /** Structured issues — preferred for UI rendering. */
+  issues: VideoForgeValidationIssue[];
+  /** Flat human-readable strings, kept for backwards compatibility. */
   errors: string[];
 }
 
@@ -1054,76 +1069,168 @@ function isNonEmptyString(v: unknown): v is string {
   return typeof v === "string" && v.trim().length > 0;
 }
 
+/**
+ * Suggested fix copy per missing/empty field. Tuned to be a single
+ * actionable sentence the UI can render verbatim.
+ */
+const FIX_HINTS: Partial<Record<string, string>> = {
+  video_title: "Add a clear, specific title for the video.",
+  core_angle: "Describe the single angle this video takes in one line.",
+  viewer_promise: "State what the viewer can do by the end, in one sentence.",
+  opening_hook: "Write 1–2 lines that create curiosity or tension in the first 3 seconds.",
+  full_script: "Regenerate — the assembled script is missing.",
+  distribution_recommendation: "Add a concrete distribution plan (platform, format, timing).",
+  success_metric: "Define one measurable outcome (view rate, CTR, sign-ups).",
+  intro: "Open with a spoken line, not a description of what to film.",
+  problem: "Name the pain in one short, spoken sentence.",
+  insight: "State the reframe as something you would say out loud.",
+  proof: "Give one concrete proof point — number, before/after, or specific result.",
+  solution: "List the steps as words you would say, not bullet labels.",
+  cta: "Tell the viewer one specific thing to do (comment, click, save, share).",
+  scene_breakdown: "Generate at least one scene before saving.",
+  stock_footage_terms: "Each scene needs a B-roll search query — regenerate.",
+  on_screen_text_overlays: "Each scene needs an on-screen text overlay.",
+  voiceover_notes: "Add at least one global voiceover direction.",
+  thumbnail_concepts: "Add at least one thumbnail concept the editor can mock up.",
+  short_caption: "Write a 1–2 line caption suitable for the platform feed.",
+  long_caption: "Write a longer caption with hashtags and viewer takeaways.",
+  timecode: "Auto-timing should fill this — regenerate the video plan.",
+  scene_purpose: "Name what this scene is doing in 2–4 words.",
+  narration: "Write the actual spoken line for this scene.",
+  suggested_visual: "Describe what's on screen during this scene.",
+  b_roll_or_stock_query: "Add a stock-footage search term for this scene.",
+  on_screen_text: "Add the burned-in text overlay for this scene.",
+  voiceover_note: "Add a one-line direction for the voice talent.",
+};
+
+const DEFAULT_FIX = "Fill this field before saving.";
+function fixFor(key: string): string {
+  return FIX_HINTS[key] ?? DEFAULT_FIX;
+}
+
+function issueToString(i: VideoForgeValidationIssue): string {
+  return `${i.path}: ${i.reason}`;
+}
+
 export function validateVideoForgeOutput(
   out: VideoForgeOutput | null | undefined,
 ): VideoForgeValidationResult {
-  const errors: string[] = [];
+  const issues: VideoForgeValidationIssue[] = [];
   if (!out) {
-    return { ok: false, errors: ["No video output to save."] };
+    const issue: VideoForgeValidationIssue = {
+      path: "(root)",
+      reason: "No video output to save.",
+      fix: "Click Generate to produce a video plan, then save.",
+    };
+    return { ok: false, issues: [issue], errors: [issueToString(issue)] };
   }
 
   for (const f of REQUIRED_STRING_FIELDS) {
     if (!isNonEmptyString(out[f] as unknown)) {
-      errors.push(`Missing or empty: ${f}`);
+      issues.push({
+        path: String(f),
+        reason: `Missing or empty: ${f}`,
+        fix: fixFor(String(f)),
+      });
     }
   }
 
   if (!out.script_sections || typeof out.script_sections !== "object") {
-    errors.push("Missing script_sections.");
+    issues.push({
+      path: "script_sections",
+      reason: "Missing script_sections.",
+      fix: "Regenerate the video plan — script sections are required.",
+    });
   } else {
     for (const s of REQUIRED_SCRIPT_SECTIONS) {
       if (!isNonEmptyString(out.script_sections[s])) {
-        errors.push(`Missing or empty script section: ${s}`);
+        issues.push({
+          path: `script_sections.${s}`,
+          reason: `Missing or empty script section: ${s}`,
+          fix: fixFor(s),
+        });
       }
     }
   }
 
   if (!Array.isArray(out.scene_breakdown) || out.scene_breakdown.length === 0) {
-    errors.push("scene_breakdown must contain at least one scene.");
+    issues.push({
+      path: "scene_breakdown",
+      reason: "scene_breakdown must contain at least one scene.",
+      fix: fixFor("scene_breakdown"),
+    });
   } else {
     out.scene_breakdown.forEach((scene, idx) => {
-      const label = `Scene ${scene?.scene_number ?? idx + 1}`;
+      const sceneNum = scene?.scene_number ?? idx + 1;
+      const label = `Scene ${sceneNum}`;
+      const basePath = `scene_breakdown[${idx}]`;
       if (!scene || typeof scene !== "object") {
-        errors.push(`${label}: invalid scene object.`);
+        issues.push({
+          path: basePath,
+          reason: `${label}: invalid scene object.`,
+          fix: "Regenerate — this scene is malformed.",
+        });
         return;
       }
       for (const f of REQUIRED_SCENE_FIELDS) {
         if (!isNonEmptyString(scene[f] as unknown)) {
-          errors.push(`${label}: missing ${f}.`);
+          issues.push({
+            path: `${basePath}.${f}`,
+            reason: `${label}: missing ${f}.`,
+            fix: fixFor(String(f)),
+          });
         }
       }
     });
   }
 
-  if (!Array.isArray(out.stock_footage_terms) || out.stock_footage_terms.length === 0) {
-    errors.push("stock_footage_terms is empty.");
-  } else if (!out.stock_footage_terms.every(isNonEmptyString)) {
-    errors.push("stock_footage_terms contains an empty entry.");
-  }
-
-  if (!Array.isArray(out.on_screen_text_overlays) || out.on_screen_text_overlays.length === 0) {
-    errors.push("on_screen_text_overlays is empty.");
-  } else if (!out.on_screen_text_overlays.every(isNonEmptyString)) {
-    errors.push("on_screen_text_overlays contains an empty entry.");
-  }
-
-  if (!Array.isArray(out.voiceover_notes) || out.voiceover_notes.length === 0) {
-    errors.push("voiceover_notes is empty.");
-  } else if (!out.voiceover_notes.every(isNonEmptyString)) {
-    errors.push("voiceover_notes contains an empty entry.");
-  }
-
-  if (!Array.isArray(out.thumbnail_concepts) || out.thumbnail_concepts.length === 0) {
-    errors.push("thumbnail_concepts is empty.");
-  } else if (!out.thumbnail_concepts.every(isNonEmptyString)) {
-    errors.push("thumbnail_concepts contains an empty entry.");
+  const arrayChecks: Array<{
+    field: keyof VideoForgeOutput;
+    label: string;
+  }> = [
+    { field: "stock_footage_terms", label: "stock_footage_terms" },
+    { field: "on_screen_text_overlays", label: "on_screen_text_overlays" },
+    { field: "voiceover_notes", label: "voiceover_notes" },
+    { field: "thumbnail_concepts", label: "thumbnail_concepts" },
+  ];
+  for (const { field, label } of arrayChecks) {
+    const arr = out[field] as unknown;
+    if (!Array.isArray(arr) || arr.length === 0) {
+      issues.push({
+        path: label,
+        reason: `${label} is empty.`,
+        fix: fixFor(label),
+      });
+    } else if (!(arr as unknown[]).every(isNonEmptyString)) {
+      issues.push({
+        path: label,
+        reason: `${label} contains an empty entry.`,
+        fix: `Remove blank entries from ${label} or regenerate.`,
+      });
+    }
   }
 
   if (!out.captions || typeof out.captions !== "object") {
-    errors.push("captions object is missing.");
+    issues.push({
+      path: "captions",
+      reason: "captions object is missing.",
+      fix: "Regenerate — captions are required.",
+    });
   } else {
-    if (!isNonEmptyString(out.captions.short_caption)) errors.push("captions.short_caption is empty.");
-    if (!isNonEmptyString(out.captions.long_caption)) errors.push("captions.long_caption is empty.");
+    if (!isNonEmptyString(out.captions.short_caption)) {
+      issues.push({
+        path: "captions.short_caption",
+        reason: "captions.short_caption is empty.",
+        fix: fixFor("short_caption"),
+      });
+    }
+    if (!isNonEmptyString(out.captions.long_caption)) {
+      issues.push({
+        path: "captions.long_caption",
+        reason: "captions.long_caption is empty.",
+        fix: fixFor("long_caption"),
+      });
+    }
   }
 
   // Speakability: spoken-text fields must contain dialogue, not stage
@@ -1132,10 +1239,13 @@ export function validateVideoForgeOutput(
   // any bracketed stage directions left inline. We only scan the spoken
   // surfaces — `voiceover_note`, `suggested_visual`, `b_roll_or_stock_query`,
   // `scene_purpose`, and on-screen text are *meant* to be directions.
-  const spokenIssues = collectSpeakabilityIssues(out);
-  errors.push(...spokenIssues);
+  collectSpeakabilityIssues(out, issues);
 
-  return { ok: errors.length === 0, errors };
+  return {
+    ok: issues.length === 0,
+    issues,
+    errors: issues.map(issueToString),
+  };
 }
 
 /**
@@ -1184,36 +1294,48 @@ function findStageDirection(text: string): string | null {
   return m ? m[0] : null;
 }
 
-function checkSpoken(label: string, text: string, errors: string[]): void {
+function checkSpoken(
+  path: string,
+  text: string,
+  issues: VideoForgeValidationIssue[],
+): void {
   if (!isNonEmptyString(text)) return;
   const verb = findInstructionalVerb(text);
   if (verb) {
-    errors.push(
-      `${label}: starts with instructional verb "${verb}" — rewrite as a line to say.`,
-    );
+    issues.push({
+      path,
+      reason: `Starts with instructional verb "${verb}" — looks like stage direction, not spoken narration.`,
+      fix: "Rewrite as words the creator would say out loud.",
+    });
   }
   const stage = findStageDirection(text);
   if (stage) {
-    errors.push(
-      `${label}: contains stage direction ${stage} — keep directions in scene visuals/voiceover, not narration.`,
-    );
+    issues.push({
+      path,
+      reason: `Contains stage direction ${stage} — keep directions in scene visuals/voiceover, not narration.`,
+      fix: "Move the bracketed direction to suggested_visual or voiceover_note.",
+    });
   }
 }
 
-function collectSpeakabilityIssues(out: VideoForgeOutput): string[] {
-  const errors: string[] = [];
-  checkSpoken("opening_hook", out.opening_hook, errors);
+function collectSpeakabilityIssues(
+  out: VideoForgeOutput,
+  issues: VideoForgeValidationIssue[],
+): void {
+  checkSpoken("opening_hook", out.opening_hook, issues);
   if (out.script_sections) {
     for (const k of REQUIRED_SCRIPT_SECTIONS) {
-      checkSpoken(`script_sections.${k}`, out.script_sections[k] ?? "", errors);
+      checkSpoken(`script_sections.${k}`, out.script_sections[k] ?? "", issues);
     }
   }
   if (Array.isArray(out.scene_breakdown)) {
     out.scene_breakdown.forEach((scene, idx) => {
-      const label = `Scene ${scene?.scene_number ?? idx + 1} narration`;
-      checkSpoken(label, scene?.narration ?? "", errors);
+      checkSpoken(
+        `scene_breakdown[${idx}].narration`,
+        scene?.narration ?? "",
+        issues,
+      );
     });
   }
-  return errors;
 }
 

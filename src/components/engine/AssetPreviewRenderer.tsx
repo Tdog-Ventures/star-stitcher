@@ -159,6 +159,18 @@ function renderVideoForge(o: Record<string, unknown>) {
   const stock = asArray<string>(o.stock_footage_terms);
   const overlays = asArray<string>(o.on_screen_text_overlays);
   const voNotes = asArray<string>(o.voiceover_notes);
+  const scenes = asArray<{
+    scene_number?: number;
+    timecode?: string;
+    end_timecode?: string;
+    duration_seconds?: number;
+    scene_purpose?: string;
+    narration?: string;
+    suggested_visual?: string;
+    b_roll_or_stock_query?: string;
+    on_screen_text?: string;
+    voiceover_note?: string;
+  }>(o.scene_breakdown);
   const mode = asString(o.mode);
   return (
     <>
@@ -193,6 +205,78 @@ function renderVideoForge(o: Record<string, unknown>) {
           )}
         </div>
       </Section>
+      {scenes.length ? (
+        <Section title={`Scene breakdown (${scenes.length})`}>
+          <ol className="space-y-3">
+            {scenes.map((s, i) => {
+              const range = s.end_timecode
+                ? `${s.timecode ?? ""} → ${s.end_timecode}`
+                : (s.timecode ?? "");
+              return (
+                <li
+                  key={s.scene_number ?? i}
+                  className="rounded-md border border-border bg-card p-2"
+                >
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-[11px] font-semibold text-muted-foreground">
+                        Scene {s.scene_number ?? i + 1}
+                      </span>
+                      <span className="font-mono text-xs font-medium text-foreground">
+                        {range || "—"}
+                      </span>
+                      {typeof s.duration_seconds === "number" ? (
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                          {s.duration_seconds}s
+                        </span>
+                      ) : null}
+                    </div>
+                    {s.scene_purpose ? (
+                      <span className="text-[11px] font-medium text-foreground">
+                        {s.scene_purpose}
+                      </span>
+                    ) : null}
+                  </div>
+                  <dl className="mt-2 grid gap-1.5 text-[11px]">
+                    {s.narration ? (
+                      <div>
+                        <dt className="font-semibold uppercase tracking-wide text-muted-foreground">
+                          Narration
+                        </dt>
+                        <dd className="text-foreground">{s.narration}</dd>
+                      </div>
+                    ) : null}
+                    {s.on_screen_text ? (
+                      <div>
+                        <dt className="font-semibold uppercase tracking-wide text-muted-foreground">
+                          On-screen text
+                        </dt>
+                        <dd className="text-foreground">"{s.on_screen_text}"</dd>
+                      </div>
+                    ) : null}
+                    {s.suggested_visual ? (
+                      <div>
+                        <dt className="font-semibold uppercase tracking-wide text-muted-foreground">
+                          Suggested visual
+                        </dt>
+                        <dd className="text-muted-foreground">{s.suggested_visual}</dd>
+                      </div>
+                    ) : null}
+                    {s.voiceover_note ? (
+                      <div>
+                        <dt className="font-semibold uppercase tracking-wide text-muted-foreground">
+                          Voiceover note
+                        </dt>
+                        <dd className="text-muted-foreground">{s.voiceover_note}</dd>
+                      </div>
+                    ) : null}
+                  </dl>
+                </li>
+              );
+            })}
+          </ol>
+        </Section>
+      ) : null}
       {stock.length ? (
         <Section title="Stock / B-roll search terms">
           <BulletList items={stock} />

@@ -140,6 +140,32 @@ describe("video-forge validator", () => {
     const v = validateVideoForgeOutput(out);
     expect(v.ok).toBe(true);
     expect(v.errors).toEqual([]);
+    expect(v.issues).toEqual([]);
+  });
+
+  it("returns structured issues with path/reason/fix", () => {
+    const out = generateVideoForge(baseInput);
+    const broken = {
+      ...out,
+      video_title: "",
+      scene_breakdown: [
+        { ...out.scene_breakdown[0], voiceover_note: "" },
+        ...out.scene_breakdown.slice(1),
+      ],
+    };
+    const v = validateVideoForgeOutput(broken);
+    expect(v.ok).toBe(false);
+    expect(v.issues.length).toBeGreaterThan(0);
+    v.issues.forEach((i) => {
+      expect(typeof i.path).toBe("string");
+      expect(i.path.length).toBeGreaterThan(0);
+      expect(typeof i.reason).toBe("string");
+      expect(i.reason.length).toBeGreaterThan(0);
+      expect(typeof i.fix).toBe("string");
+      expect(i.fix.length).toBeGreaterThan(0);
+    });
+    expect(v.issues.some((i) => i.path === "video_title")).toBe(true);
+    expect(v.issues.some((i) => i.path === "scene_breakdown[0].voiceover_note")).toBe(true);
   });
 
   it("fails on null output", () => {
