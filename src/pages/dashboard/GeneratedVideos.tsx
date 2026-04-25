@@ -664,6 +664,7 @@ const GeneratedVideos = () => {
                     {(() => {
                       const renderUi = deriveRenderUi(rec);
                       const isSubmitting = renderingNow.has(rec.id);
+                      const isCancelling = cancellingNow.has(rec.id);
                       if (renderUi === "complete" && rec.rendered_video_url) {
                         return (
                           <Button asChild size="sm" variant="default">
@@ -681,27 +682,45 @@ const GeneratedVideos = () => {
                       }
                       if (renderUi === "rendering") {
                         return (
-                          <Button size="sm" variant="outline" disabled data-testid="render-pending">
-                            <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                            Rendering…
-                          </Button>
+                          <>
+                            <Button size="sm" variant="outline" disabled data-testid="render-pending">
+                              <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                              Rendering…
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleCancel(rec)}
+                              disabled={isCancelling}
+                              data-testid="render-cancel"
+                            >
+                              {isCancelling ? (
+                                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <XCircle className="mr-2 h-3.5 w-3.5" />
+                              )}
+                              Cancel render
+                            </Button>
+                          </>
                         );
                       }
-                      if (renderUi === "failed") {
+                      if (renderUi === "failed" || renderUi === "cancelled") {
                         return (
                           <Button
                             size="sm"
-                            variant="destructive"
+                            variant={renderUi === "failed" ? "destructive" : "outline"}
                             onClick={() => handleRetry(rec, meta)}
                             disabled={isSubmitting}
-                            data-testid="render-retry"
+                            data-testid={renderUi === "failed" ? "render-retry" : "render-restart"}
                           >
                             {isSubmitting ? (
                               <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                            ) : (
+                            ) : renderUi === "failed" ? (
                               <AlertTriangle className="mr-2 h-3.5 w-3.5" />
+                            ) : (
+                              <Film className="mr-2 h-3.5 w-3.5" />
                             )}
-                            Retry render
+                            {renderUi === "failed" ? "Retry render" : "Render again"}
                           </Button>
                         );
                       }
