@@ -582,6 +582,49 @@ const GeneratedVideos = () => {
                       <Send className="mr-2 h-3.5 w-3.5" />
                       Schedule
                     </Button>
+                    {(() => {
+                      const renderUi = deriveRenderUi(rec);
+                      const isSubmitting = renderingNow.has(rec.id);
+                      if (renderUi === "complete" && rec.rendered_video_url) {
+                        return (
+                          <Button asChild size="sm" variant="default">
+                            <a
+                              href={rec.rendered_video_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              data-testid="download-mp4"
+                            >
+                              <Download className="mr-2 h-3.5 w-3.5" />
+                              Download MP4
+                            </a>
+                          </Button>
+                        );
+                      }
+                      if (renderUi === "rendering") {
+                        return (
+                          <Button size="sm" variant="outline" disabled data-testid="render-pending">
+                            <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                            Rendering…
+                          </Button>
+                        );
+                      }
+                      return (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleRender(rec, meta)}
+                          disabled={isSubmitting}
+                          data-testid="render-video"
+                        >
+                          {isSubmitting ? (
+                            <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Film className="mr-2 h-3.5 w-3.5" />
+                          )}
+                          Render video
+                        </Button>
+                      );
+                    })()}
                     <Button asChild size="sm" variant="ghost">
                       <Link to="/assets">
                         <Download className="mr-2 h-3.5 w-3.5" />
