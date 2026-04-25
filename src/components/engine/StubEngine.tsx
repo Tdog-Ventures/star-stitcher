@@ -224,19 +224,41 @@ export function StubEngine({
 
       <FormSection title="Inputs" description="These shape the generated output.">
         <div className="grid gap-4">
-          {fields.map((f) =>
-            f.textarea ? (
-              <div key={f.key} className="space-y-2">
-                <Label htmlFor={f.key}>{f.label}</Label>
-                <Textarea
-                  id={f.key}
-                  rows={3}
-                  placeholder={f.placeholder}
-                  value={values[f.key] ?? ""}
-                  onChange={(e) => set(f.key, e.target.value)}
-                />
-              </div>
-            ) : (
+          {fields.map((f) => {
+            if (f.options) {
+              return (
+                <div key={f.key} className="space-y-2">
+                  <Label htmlFor={f.key}>{f.label}</Label>
+                  <Select value={values[f.key] ?? ""} onValueChange={(v) => set(f.key, v)}>
+                    <SelectTrigger id={f.key}>
+                      <SelectValue placeholder={f.placeholder ?? "Select…"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {f.options.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>
+                          {o.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              );
+            }
+            if (f.textarea) {
+              return (
+                <div key={f.key} className="space-y-2">
+                  <Label htmlFor={f.key}>{f.label}</Label>
+                  <Textarea
+                    id={f.key}
+                    rows={3}
+                    placeholder={f.placeholder}
+                    value={values[f.key] ?? ""}
+                    onChange={(e) => set(f.key, e.target.value)}
+                  />
+                </div>
+              );
+            }
+            return (
               <div key={f.key} className="space-y-2">
                 <Label htmlFor={f.key}>{f.label}</Label>
                 <Input
@@ -246,8 +268,8 @@ export function StubEngine({
                   onChange={(e) => set(f.key, e.target.value)}
                 />
               </div>
-            ),
-          )}
+            );
+          })}
         </div>
       </FormSection>
 
