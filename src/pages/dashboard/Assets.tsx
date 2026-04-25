@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Send } from "lucide-react";
+import { Eye, Plus, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -29,7 +29,7 @@ import {
   distributeFormSchema,
   type Channel,
 } from "@/lib/distribution";
-import { EngineLayout, AssetTable, type AssetRow } from "@/components/engine";
+import { EngineLayout, AssetTable, AssetPreviewRenderer, type AssetRow } from "@/components/engine";
 import type { EngineStatus } from "@/components/engine/StatusBadge";
 
 interface AssetRecord {
@@ -63,6 +63,12 @@ const Assets = () => {
   const [notes, setNotes] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewAsset, setPreviewAsset] = useState<AssetRecord | null>(null);
+  const [previewContent, setPreviewContent] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
 
   const load = async () => {
     if (!user) return;
@@ -99,6 +105,27 @@ const Assets = () => {
     setNotes("");
     setErrors({});
     setOpen(true);
+  };
+
+  const openPreview = async (row: AssetRow) => {
+    const rec = rows.find((r) => r.id === row.id) ?? null;
+    if (!rec) return;
+    setPreviewAsset(rec);
+    setPreviewContent(null);
+    setPreviewError(null);
+    setPreviewOpen(true);
+    setPreviewLoading(true);
+    const { data, error } = await supabase
+      .from("assets")
+      .select("content")
+      .eq("id", rec.id)
+      .maybeSingle();
+    setPreviewLoading(false);
+    if (error) {
+      setPreviewError(error.message);
+      return;
+    }
+    setPreviewContent(data?.content ?? "");
   };
 
   const submit = async () => {
@@ -184,10 +211,16 @@ const Assets = () => {
         <AssetTable
           rows={tableRows}
           rowActions={(row) => (
-            <Button size="sm" variant="outline" onClick={() => openDistribute(row)}>
-              <Send className="mr-2 h-3.5 w-3.5" />
-              Distribute
-            </Button>
+            <div className="flex items-center justify-end gap-2">
+              <Button size="sm" variant="ghost" onClick={() => openPreview(row)}>
+                <Eye className="mr-2 h-3.5 w-3.5" />
+                Preview
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => openDistribute(row)}>
+                <Send className="mr-2 h-3.5 w-3.5" />
+                Distribute
+              </Button>
+            </div>
           )}
           emptyState={
             <span>
@@ -265,6 +298,34 @@ const Assets = () => {
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
             <Button onClick={submit} disabled={submitting}>
               {submitting ? "Queueing…" : "Queue task"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{previewAsset?.title ?? "Asset preview"}</DialogTitle>
+            <DialogDescription>
+              {previewAsset
+                ? `${previewAsset.engine_key} · ${new Date(previewAsset.updated_at).toLocaleString()}`
+                : null}
+            </DialogDescription>
+          </DialogHeader>
+          {previewLoading ? (
+            <p className="text-sm text-muted-foreground">Loading…</p>
+          ) : previewError ? (
+            <p className="text-sm text-destructive">Failed to load: {previewError}</p>
+          ) : (
+            <AssetPreviewRenderer
+              content={previewContent}
+              engineKey={previewAsset?.engine_key}
+            />
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPreviewOpen(false)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

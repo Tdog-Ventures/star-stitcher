@@ -19,7 +19,7 @@ const toInput = (v: Record<string, string>): ShowcaseInput => ({
 
 const Showcase = () => (
   <StubEngine
-    engineKey="ethinx_showcase"
+    engineKey="showcase"
     assetType="showcase_asset"
     title="ETHINX Showcase"
     description="Package finished work into a public-facing case study, portfolio card, or post."

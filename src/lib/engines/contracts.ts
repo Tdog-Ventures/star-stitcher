@@ -13,7 +13,7 @@ export const ENGINE_KEYS = [
   "video_velocity",
   "partner_program",
   "growth_hub",
-  "ethinx_showcase",
+  "showcase",
   "offer",
 ] as const;
 export type EngineKey = (typeof ENGINE_KEYS)[number];
@@ -26,7 +26,7 @@ export const ENGINE_TYPES: Record<EngineKey, string> = {
   video_velocity: "video_batch_plan",
   partner_program: "partner_brief",
   growth_hub: "growth_experiment",
-  ethinx_showcase: "showcase_asset",
+  showcase: "showcase_asset",
   offer: "offer",
 };
 
