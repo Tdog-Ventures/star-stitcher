@@ -1,5 +1,6 @@
 // Creator Launchpad — turns project idea + timeframe + outcome
 // into a milestone-based launch roadmap.
+import { formatFooter } from "./output-footer";
 
 export type LaunchTimeframe = "1-week" | "2-weeks" | "30-days" | "60-days";
 
@@ -98,7 +99,7 @@ export function generateLaunchPlan(input: LaunchpadInput): LaunchPlan {
       day: launchEnd - 1,
       phase: "launch",
       title: "Urgency window",
-      detail: `Announce a real deadline or bonus that closes at ${launchEnd}. Post a countdown daily.`,
+      detail: `Announce a real deadline or bonus that closes at end of Day ${launchEnd}. Post a countdown daily.`,
     },
     {
       day: launchEnd,
