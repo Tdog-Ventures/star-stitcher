@@ -41,14 +41,14 @@ Deno.serve(async (req) => {
   );
 
   const token = authHeader.replace("Bearer ", "");
-  const { data: claimsData, error: claimsErr } = await supabase.auth.getClaims(token);
-  if (claimsErr || !claimsData?.claims) {
+  const { data: userData, error: userErr } = await supabase.auth.getUser(token);
+  if (userErr || !userData?.user) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-  const userId = claimsData.claims.sub as string;
+  const userId = userData.user.id;
 
   // Accept params from query string (GET) OR body (POST via supabase.functions.invoke)
   let jobId = "";
