@@ -109,4 +109,100 @@ describe("video-forge generator", () => {
       }).mode,
     ).toBe("long_form");
   });
+
+  it("auto-calculates contiguous timecodes and per-scene durations", () => {
+    const out = generateVideoForge({ ...baseInput, mode: "short_form", target_length: "short" });
+    let prevEndSeconds = 0;
+    out.scene_breakdown.forEach((s, i) => {
+      expect(typeof s.duration_seconds).toBe("number");
+      expect(s.duration_seconds!).toBeGreaterThan(0);
+      expect(s.end_timecode).toMatch(/^\d+:\d{2}$/);
+
+      const [m, sec] = s.timecode.split(":").map(Number);
+      const startSeconds = m * 60 + sec;
+      if (i === 0) {
+        expect(startSeconds).toBe(0);
+      } else {
+        expect(startSeconds).toBe(prevEndSeconds);
+      }
+      const [em, esec] = s.end_timecode!.split(":").map(Number);
+      prevEndSeconds = em * 60 + esec;
+      expect(prevEndSeconds - startSeconds).toBe(s.duration_seconds);
+    });
+    const total = out.scene_breakdown.reduce((acc, s) => acc + (s.duration_seconds || 0), 0);
+    expect(total).toBe(30);
+  });
 });
+
+describe("video-forge validator", () => {
+  it("passes a freshly generated output", () => {
+    const out = generateVideoForge(baseInput);
+    const v = validateVideoForgeOutput(out);
+    expect(v.ok).toBe(true);
+    expect(v.errors).toEqual([]);
+  });
+
+  it("fails on null output", () => {
+    const v = validateVideoForgeOutput(null);
+    expect(v.ok).toBe(false);
+    expect(v.errors.length).toBeGreaterThan(0);
+  });
+
+  it("flags missing top-level fields", () => {
+    const out = generateVideoForge(baseInput);
+    const broken = { ...out, video_title: "", success_metric: "   " };
+    const v = validateVideoForgeOutput(broken);
+    expect(v.ok).toBe(false);
+    expect(v.errors.some((e) => e.includes("video_title"))).toBe(true);
+    expect(v.errors.some((e) => e.includes("success_metric"))).toBe(true);
+  });
+
+  it("flags missing script section", () => {
+    const out = generateVideoForge(baseInput);
+    const broken = {
+      ...out,
+      script_sections: { ...out.script_sections, cta: "" },
+    };
+    const v = validateVideoForgeOutput(broken);
+    expect(v.ok).toBe(false);
+    expect(v.errors.some((e) => e.includes("cta"))).toBe(true);
+  });
+
+  it("flags scenes missing required production fields", () => {
+    const out = generateVideoForge(baseInput);
+    const broken = {
+      ...out,
+      scene_breakdown: [
+        {
+          ...out.scene_breakdown[0],
+          voiceover_note: "",
+          b_roll_or_stock_query: "",
+        },
+        ...out.scene_breakdown.slice(1),
+      ],
+    };
+    const v = validateVideoForgeOutput(broken);
+    expect(v.ok).toBe(false);
+    expect(v.errors.some((e) => e.includes("voiceover_note"))).toBe(true);
+    expect(v.errors.some((e) => e.includes("b_roll_or_stock_query"))).toBe(true);
+  });
+
+  it("flags empty scene_breakdown", () => {
+    const out = generateVideoForge(baseInput);
+    const v = validateVideoForgeOutput({ ...out, scene_breakdown: [] });
+    expect(v.ok).toBe(false);
+    expect(v.errors.some((e) => e.includes("scene_breakdown"))).toBe(true);
+  });
+
+  it("flags empty captions", () => {
+    const out = generateVideoForge(baseInput);
+    const v = validateVideoForgeOutput({
+      ...out,
+      captions: { short_caption: "", long_caption: "" },
+    });
+    expect(v.ok).toBe(false);
+    expect(v.errors.some((e) => e.includes("short_caption"))).toBe(true);
+    expect(v.errors.some((e) => e.includes("long_caption"))).toBe(true);
+  });
+});
+
