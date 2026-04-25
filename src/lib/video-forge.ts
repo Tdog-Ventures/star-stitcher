@@ -257,44 +257,44 @@ function buildScriptSections(input: VideoForgeInput, mode: VideoMode): ScriptSec
 
   if (mode === "long_form") {
     return {
-      intro: `Welcome back. Today we're going deep on ${topic}, specifically for ${who} who want to ${outcome}. I'll cover what most people miss, the one reframe that changes the game, and a 3-step plan you can run this week.`,
-      problem: `Here's where almost every ${who} gets stuck on ${topic}: they treat it as a tactic, not a system. So they try one thing, it doesn't work in two weeks, and they bail. Sound familiar?`,
-      insight: `The reframe is this: ${topic} isn't a single move — it's a feedback loop. Once you see it as a loop, every "tactic" becomes one knob you can turn. Let me show you what I mean.`,
-      proof: `Here's the receipts. Last quarter I ran this exact loop with three ${who}. Specifics on screen — note the pattern in week 2 vs week 6. This isn't theory; the curve looks the same every time.`,
-      solution: `Here's the 3-step plan. Step one: define one input you can measure weekly. Step two: ship one experiment per week against that input. Step three: review, kill, double down — every Friday, no exceptions. That's the whole loop.`,
+      intro: `If you're ${who} and ${topic} hasn't moved for you in 90 days, this is the video. You'll get the reframe, the receipts, and a 3-step plan you can run this week — no fluff, no filler.`,
+      problem: `Here's where you're stuck. You're treating ${topic} as a tactic — try one thing, wait two weeks, bail when nothing happens. That loop is the problem, not the tactic.`,
+      insight: `${topic} isn't a single move. It's a feedback loop. Once you see it as a loop, every "tactic" becomes one knob you can turn — and you stop guessing.`,
+      proof: `Three ${who}, same loop, last quarter. Look at week 2 vs week 6 on the chart. Same pattern every time. This isn't theory; it's repeatable.`,
+      solution: `Three steps, run weekly. One: pick the single input you'll measure. Two: ship one experiment against it this week. Three: every Friday, kill what didn't move the input and double what did. That's the loop.`,
       cta: buildCta(input, mode),
     };
   }
 
   if (mode === "faceless") {
     return {
-      intro: `If you're ${who}, ${topic} feels harder than it should. There's a reason. And there's a fix.`,
-      problem: `Most ${who} fix the wrong layer first. They tweak the surface. The break is one level down.`,
-      insight: `${topic} isn't one move. It's a loop. Each piece feeds the next — that's why the wins compound.`,
-      proof: `Same effort. New framing. The numbers move every time. Watch the curve, not the day-one spike.`,
-      solution: `Three steps to ${outcome}. One: name the loop. Two: ship one experiment this week. Three: review on Friday.`,
+      intro: `If you're ${who}, ${topic} feels harder than it should. It's not your effort. It's the order you're running it in.`,
+      problem: `You're fixing the wrong layer. The break isn't on the surface — it's one level down, where you're not looking.`,
+      insight: `${topic} isn't one move. It's a loop. Each piece feeds the next — that's why your wins compound when you finally run it in order.`,
+      proof: `Same effort. New order. The numbers move every time. Watch the curve — not the day-one spike.`,
+      solution: `Three steps to ${outcome}. One: name the loop. Two: ship one experiment this week. Three: review on Friday. Skip step three and you're back to square one in a month.`,
       cta: buildCta(input, mode),
     };
   }
 
   if (mode === "product_demo") {
     return {
-      intro: `Quick demo. ${topic}, end-to-end, in under two minutes. No slides. No setup. Just the product.`,
-      problem: `Most ${who} burn thirty minutes a day on this exact screen. Watch.`,
-      insight: `One click in our flow, and that thirty minutes is thirty seconds. We built around the job, not the tool.`,
+      intro: `Quick one. ${topic}, end-to-end, inside the product — in under two minutes. No slides, no setup, no marketing voice.`,
+      problem: `Right now, you're losing 30 minutes a day to this exact screen. Here's what that looks like.`,
+      insight: `One click in our flow turns those 30 minutes into 30 seconds. We built around the job you're doing — not the tool you've been using.`,
       proof: `Real example. Live. No edits. Empty state to finished result, right now.`,
-      solution: `Day one looks like this. Connect once. Configure once. Then ship. That's the whole loop.`,
+      solution: `Day one looks like this. Connect once. Configure once. Then ship — every time, in seconds. That's the whole loop.`,
       cta: buildCta(input, mode),
     };
   }
 
   // short_form
   return {
-    intro: `If you're ${who} and you want to ${outcome}, this is the 30 seconds that matters.`,
-    problem: `${who} keep grinding ${topic} and getting nothing back. Same effort. Same dead end. Every week.`,
-    insight: `${topic} isn't a tactic. It's a loop. Most people only run half of it — that's why it stalls.`,
-    proof: `One number tells the story. Same person, same product, twice the result — the only thing that changed was the loop.`,
-    solution: `Do three things. Pick one input. Ship one experiment a week. Review every Friday. That's it.`,
+    intro: `If you're ${who} and you want to ${outcome}, the next 30 seconds matter more than the last 30 days you spent on ${topic}.`,
+    problem: `You keep grinding ${topic} and getting nothing back. Same effort, same dead end, every week. That's not a tactic problem.`,
+    insight: `${topic} isn't a tactic. It's a loop. You're running half of it — that's why it stalls on you.`,
+    proof: `One number tells the story. Same person, same product, twice the result. The only thing that changed was the order.`,
+    solution: `Three things. Pick one input. Ship one experiment a week. Review every Friday. Skip Friday and you're back where you started.`,
     cta: buildCta(input, mode),
   };
 }
