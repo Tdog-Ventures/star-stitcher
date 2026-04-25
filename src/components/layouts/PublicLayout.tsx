@@ -8,10 +8,12 @@ export function PublicLayout() {
       <main className="flex-1">
         <Outlet />
       </main>
-      <footer className="border-t border-border py-8">
-        <div className="container flex flex-col items-center justify-between gap-2 text-sm text-muted-foreground md:flex-row">
-          <p>© {new Date().getFullYear()} ETHINX. All rights reserved.</p>
-          <p>Built for solo founders.</p>
+      <footer className="border-t border-border py-6">
+        <div className="container flex flex-col items-center justify-between gap-2 font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground md:flex-row">
+          <p>
+            <span className="text-primary">●</span> ETHINX · {new Date().getFullYear()}
+          </p>
+          <p>9 engines · one video system</p>
         </div>
       </footer>
     </div>

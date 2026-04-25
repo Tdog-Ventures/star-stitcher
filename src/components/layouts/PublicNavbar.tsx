@@ -17,20 +17,21 @@ export function PublicNavbar() {
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-border bg-background/80 backdrop-blur">
-      <div className="container flex h-16 items-center justify-between">
-        <Link to="/" className="text-lg font-semibold tracking-tight">
-          ETHINX
+    <header className="sticky top-0 z-40 w-full border-b border-border bg-background/85 backdrop-blur">
+      <div className="container flex h-14 items-center justify-between">
+        <Link to="/" className="flex items-center gap-2 text-sm font-semibold tracking-tight">
+          <span className="inline-block h-2 w-2 rounded-full bg-primary shadow-[0_0_10px_hsl(var(--primary))]" />
+          <span className="font-mono uppercase tracking-[0.18em]">ETHINX</span>
         </Link>
 
-        <nav className="hidden items-center gap-6 md:flex">
+        <nav className="hidden items-center gap-1 md:flex">
           {links.map((l) => (
             <NavLink
               key={l.to}
               to={l.to}
               end={l.end}
-              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-              activeClassName="text-foreground font-medium"
+              className="rounded-md px-3 py-1.5 font-mono text-xs uppercase tracking-[0.16em] text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground"
+              activeClassName="bg-muted/60 text-primary"
             >
               {l.label}
             </NavLink>
