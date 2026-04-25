@@ -6,10 +6,10 @@ import { useTheme } from "@/providers/ThemeProvider";
 import { Moon, Sun } from "lucide-react";
 
 const links = [
-  { to: "/", label: "Home", end: true },
-  { to: "/showcase", label: "Showcase" },
-  { to: "/partners", label: "Partners" },
-  { to: "/video-velocity", label: "Video Velocity" },
+  { to: "/engines", label: "Engines" },
+  { to: "/assets", label: "Assets" },
+  { to: "/distribution", label: "Distribution" },
+  { to: "/admin", label: "Admin" },
 ];
 
 export function PublicNavbar() {
