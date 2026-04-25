@@ -1,8 +1,15 @@
-// Video Velocity — turns batch topic + count + platform
-// into a per-video production plan for one filming session.
+// Video Velocity — turns one topic into a repeatable batch production plan.
 import { formatFooter } from "./output-footer";
 
 export type VelocityPlatform = "tiktok" | "reels" | "shorts" | "linkedin" | "x";
+
+export type PublishingFrequency = "daily" | "every-other-day" | "3x-week" | "weekly";
+
+export type ContentGoal =
+  | "growth"
+  | "authority"
+  | "leads"
+  | "sales";
 
 export const VELOCITY_PLATFORM_LABELS: Record<VelocityPlatform, string> = {
   tiktok: "TikTok",
@@ -12,12 +19,18 @@ export const VELOCITY_PLATFORM_LABELS: Record<VelocityPlatform, string> = {
   x: "X video",
 };
 
-const PLATFORM_LENGTH: Record<VelocityPlatform, string> = {
-  tiktok: "20–35s, vertical 9:16",
-  reels: "15–30s, vertical 9:16",
-  shorts: "30–45s, vertical 9:16",
-  linkedin: "60–90s, square 1:1 or 9:16",
-  x: "30–60s, 16:9 or 9:16",
+export const FREQUENCY_LABELS: Record<PublishingFrequency, string> = {
+  daily: "Daily",
+  "every-other-day": "Every other day",
+  "3x-week": "3x / week",
+  weekly: "Weekly",
+};
+
+export const CONTENT_GOAL_LABELS: Record<ContentGoal, string> = {
+  growth: "Audience growth",
+  authority: "Authority / trust",
+  leads: "Lead capture",
+  sales: "Direct sales",
 };
 
 const PLATFORM_HOOK_RULE: Record<VelocityPlatform, string> = {
@@ -28,208 +41,257 @@ const PLATFORM_HOOK_RULE: Record<VelocityPlatform, string> = {
   x: "First 4s must work without sound (autoplay muted).",
 };
 
+const PLATFORM_LENGTH: Record<VelocityPlatform, string> = {
+  tiktok: "20–35s, vertical 9:16",
+  reels: "15–30s, vertical 9:16",
+  shorts: "30–45s, vertical 9:16",
+  linkedin: "60–90s, square 1:1 or 9:16",
+  x: "30–60s, 16:9 or 9:16",
+};
+
 interface AngleSpec {
   kind: string;
-  hookPrefix: string;
   title: (t: string) => string;
   hook: (t: string) => string;
-  beat1: (t: string) => string;
-  beat2: (t: string) => string;
+  scriptSummary: (t: string) => string;
+  visual: string;
+  cta: (t: string, isLast: boolean, nextKind?: string) => string;
 }
 
 const ANGLES: AngleSpec[] = [
   {
     kind: "Mistake",
-    hookPrefix: "Stop.",
     title: (t) => `The #1 mistake people make about ${t}`,
     hook: (t) => `Stop. If you're trying ${t}, you're probably doing this wrong.`,
-    beat1: (t) => `Name the mistake explicitly: most people approach ${t} by [generic move]. It feels productive but moves zero metrics.`,
-    beat2: (t) => `Show what works instead in one sentence — and back it with one number you can prove.`,
+    scriptSummary: (t) => `Name the mistake about ${t} explicitly, show why it feels productive but moves nothing, then deliver the replacement move with a number you can prove.`,
+    visual: "Tight close-up + on-screen X over a screenshot of the bad approach.",
+    cta: (t, isLast, next) => isLast ? `Follow for the full ${t} series.` : `Save this. Tomorrow: ${next}.`,
   },
   {
     kind: "Contrarian",
-    hookPrefix: "Hot take:",
     title: (t) => `Why the common advice on ${t} is wrong`,
     hook: (t) => `Hot take: the popular advice on ${t} is built for a different game than yours.`,
-    beat1: (t) => `Quote the common advice on ${t} verbatim. Then explain why the conditions it assumes don't apply to your audience.`,
-    beat2: (t) => `Offer the contrarian rule. State the trade-off honestly — when it doesn't work.`,
+    scriptSummary: (t) => `Quote the common advice on ${t} verbatim, explain the assumption it relies on that doesn't apply, then give the contrarian rule + the trade-off.`,
+    visual: "Split-screen: 'common advice' left, 'real rule' right.",
+    cta: (t, isLast, next) => isLast ? `DM "${t}" for the playbook.` : `Save. Tomorrow: ${next}.`,
   },
   {
     kind: "Framework",
-    hookPrefix: "Quick framework:",
     title: (t) => `A 3-step way to do ${t}`,
     hook: (t) => `Here's the 3-step way I run ${t} — copy it.`,
-    beat1: (t) => `Walk through steps 1–2 with one concrete artifact each (a line, a metric, a screenshot of ${t}).`,
-    beat2: (t) => `Step 3 + the failure mode at each step. End with the artifact a viewer should produce by tonight.`,
+    scriptSummary: (t) => `Walk through 3 steps for ${t}, each with one concrete artifact (a line, a metric, a screenshot). End on the artifact the viewer should produce by tonight.`,
+    visual: "3 numbered cards animate in over speaker eye-line shot.",
+    cta: (t, isLast, next) => isLast ? `Comment "framework" for the doc.` : `Save. Tomorrow: ${next}.`,
   },
   {
     kind: "Case study",
-    hookPrefix: "Real example:",
     title: (t) => `How [name] used ${t} to [result]`,
     hook: (t) => `Real example: someone I know used ${t} to get a result most people don't believe.`,
-    beat1: (t) => `Set the scene: who, what they tried before, why it failed. Specific numbers > adjectives.`,
-    beat2: (t) => `What they changed about ${t} + the outcome with a date. Lesson the viewer can steal.`,
+    scriptSummary: (t) => `Set the scene (who / what they tried before / why it failed), what they changed about ${t}, and the outcome with a date. Lesson the viewer can steal.`,
+    visual: "Before/after dashboard or document on screen with subject reaction.",
+    cta: (t, isLast, next) => isLast ? `Reply with your before-state — I'll suggest the next move.` : `Save. Tomorrow: ${next}.`,
   },
   {
     kind: "Myth-bust",
-    hookPrefix: "Myth:",
     title: (t) => `The biggest myth about ${t}`,
     hook: (t) => `The biggest lie about ${t} is the one nobody questions.`,
-    beat1: (t) => `State the myth in 1 line. Show where it came from (who benefits from people believing it about ${t}?).`,
-    beat2: (t) => `Replace it with the reality + one tactic that proves the new framing.`,
+    scriptSummary: (t) => `State the myth on ${t} in one line, show who benefits from it being believed, then replace with reality + one tactic that proves the new framing.`,
+    visual: "Lower-third with the myth text crossed out, replaced with reality.",
+    cta: (t, isLast, next) => isLast ? `Share with one person stuck on the old myth.` : `Save. Tomorrow: ${next}.`,
   },
   {
     kind: "Shortcut",
-    hookPrefix: "Save 10 minutes:",
     title: (t) => `One template that makes ${t} faster`,
     hook: (t) => `Steal this template — it cuts ${t} time in half.`,
-    beat1: (t) => `Show the template on screen (text overlay). Walk through what each field does.`,
-    beat2: (t) => `Demo: fill it in live with a realistic ${t} example. Tell viewers where to grab it.`,
+    scriptSummary: (t) => `Show the template on screen, walk through what each field does, demo it live with a realistic ${t} example, then tell viewers where to grab it.`,
+    visual: "Screen recording of the template being filled out in real time.",
+    cta: (t, isLast, next) => isLast ? `Comment "template" — I'll DM the link.` : `Save. Tomorrow: ${next}.`,
   },
   {
     kind: "Recap",
-    hookPrefix: "Best of the week:",
     title: (t) => `3 things I learned about ${t} this week`,
     hook: (t) => `3 lessons from this week on ${t} — distilled.`,
-    beat1: (t) => `Lessons 1 & 2 with the source / context that produced each insight on ${t}.`,
-    beat2: (t) => `Lesson 3 + the one thing you're changing about ${t} next week.`,
+    scriptSummary: (t) => `Lessons 1 & 2 on ${t} with the source / context that produced each insight. Lesson 3 + the one thing you're changing about ${t} next week.`,
+    visual: "Three numbered text overlays + speaker direct to camera.",
+    cta: (t, isLast, next) => isLast ? `Follow for next week's recap.` : `Save. Tomorrow: ${next}.`,
   },
   {
     kind: "Behind-the-scenes",
-    hookPrefix: "Inside look:",
     title: (t) => `How I actually run ${t} day-to-day`,
     hook: (t) => `What ${t} looks like behind the scenes — not the polished version.`,
-    beat1: (t) => `Show the messy artifact: the doc, the dashboard, the inbox you actually use for ${t}.`,
-    beat2: (t) => `One unglamorous habit that makes the whole system work. End on the trade-off you accept.`,
+    scriptSummary: (t) => `Show the messy artifact (doc / dashboard / inbox) you actually use for ${t}. Reveal one unglamorous habit that makes the system work + the trade-off you accept.`,
+    visual: "Phone-quality screen capture of real workspace, no polish.",
+    cta: (t, isLast, next) => isLast ? `Reply: which part do you want a deeper look at?` : `Save. Tomorrow: ${next}.`,
   },
   {
     kind: "Q&A",
-    hookPrefix: "Most-asked Q:",
     title: (t) => `The question I get most about ${t}`,
     hook: (t) => `The single question I get most about ${t} — answered straight.`,
-    beat1: (t) => `Read the question verbatim. Reframe it: what they're really asking about ${t} is ____.`,
-    beat2: (t) => `Direct answer with one example. Invite a follow-up question in the comments.`,
+    scriptSummary: (t) => `Read the question verbatim, reframe what they're really asking about ${t}, give a direct answer with one example, and invite a follow-up question.`,
+    visual: "Question text on screen above eye-line.",
+    cta: (t, isLast, next) => isLast ? `Drop your question in the comments.` : `Save. Tomorrow: ${next}.`,
   },
   {
     kind: "Prediction",
-    hookPrefix: "Next 12 months:",
     title: (t) => `Where ${t} is going in the next 12 months`,
     hook: (t) => `Where ${t} goes next — and what to do today to be ready.`,
-    beat1: (t) => `One trend on ${t} you can show evidence for (data, anecdote, signal).`,
-    beat2: (t) => `Concrete action a viewer can take this week to position for that future.`,
+    scriptSummary: (t) => `One trend on ${t} you can show evidence for (data / signal), then one concrete action a viewer can take this week to position for that future.`,
+    visual: "Simple animated chart or trend graphic.",
+    cta: (t, isLast, next) => isLast ? `Follow if you want the next one.` : `Save. Tomorrow: ${next}.`,
   },
   {
     kind: "Compare",
-    hookPrefix: "Old vs new:",
-    title: (t) => `Old way vs new way of doing ${t}`,
+    title: (t) => `Old vs new way of doing ${t}`,
     hook: (t) => `Old ${t} vs new ${t} — same goal, very different work.`,
-    beat1: (t) => `Show the old way of ${t} on screen. Be fair about what it got right.`,
-    beat2: (t) => `Show the new way + the specific situation where each one still wins.`,
+    scriptSummary: (t) => `Show the old way of ${t} fairly. Then show the new way + the specific situation where each one still wins.`,
+    visual: "Side-by-side split screen, old left, new right.",
+    cta: (t, isLast, next) => isLast ? `Which side are you on? Reply.` : `Save. Tomorrow: ${next}.`,
   },
   {
     kind: "Anti-pattern",
-    hookPrefix: "Stop doing:",
     title: (t) => `3 things to STOP doing in ${t}`,
     hook: (t) => `If you're doing ${t}, stop these 3 things first.`,
-    beat1: (t) => `Anti-patterns 1 & 2 in ${t}, with why each one feels right but fails.`,
-    beat2: (t) => `Anti-pattern 3 + the replacement habit. Make the swap concrete.`,
+    scriptSummary: (t) => `Anti-patterns 1 & 2 in ${t} with why each feels right but fails. Anti-pattern 3 + the replacement habit. Make the swap concrete.`,
+    visual: "Red X over each anti-pattern, green check on the replacement.",
+    cta: (t, isLast, next) => isLast ? `Reply with the one you're stopping today.` : `Save. Tomorrow: ${next}.`,
   },
 ];
 
-export interface VelocityInput {
-  batchTopic: string;
-  videoCount: string; // string from select; coerced
+export interface VideoVelocityInput {
+  batch_topic: string;
+  number_of_videos: string;
   platform: VelocityPlatform;
+  audience: string;
+  publishing_frequency: PublishingFrequency;
+  content_goal: ContentGoal;
+  source_material: string;
 }
 
 export interface VelocityVideo {
-  index: number;
-  angle: string;
-  workingTitle: string;
+  video_number: number;
+  title: string;
   hook: string;
-  beat1: string;
-  beat2: string;
+  angle: string;
+  script_summary: string;
+  visual_direction: string;
   cta: string;
 }
 
-interface VelocityBatch {
-  videos: VelocityVideo[];
-  shoot: { setup: string; wardrobe: string; rollOrder: string[]; estimatedTime: string };
-  publish: { cadence: string; firstPost: string };
+export interface VideoVelocityOutput {
+  batch_strategy: string;
+  video_batch_table: VelocityVideo[];
+  repurposing_plan: string[];
+  posting_schedule: { video_number: number; day: string; window: string }[];
+  production_checklist: string[];
+  bottlenecks: string[];
+  distribution_recommendation: string;
+  success_metric: string;
 }
 
-export function generateBatch(input: VelocityInput): VelocityBatch {
-  const topic = input.batchTopic || "your topic";
-  const count = Math.min(Math.max(parseInt(input.videoCount, 10) || 5, 1), ANGLES.length);
+const DAY_GAP: Record<PublishingFrequency, number> = {
+  daily: 1,
+  "every-other-day": 2,
+  "3x-week": 2.33,
+  weekly: 7,
+};
+
+function nthDay(n: number, gap: number): string {
+  const day = Math.round(n * gap);
+  return `Day ${day}`;
+}
+
+export function generateVideoVelocity(input: VideoVelocityInput): VideoVelocityOutput {
+  const topic = input.batch_topic || "your topic";
+  const audience = input.audience || "your audience";
+  const count = Math.min(Math.max(parseInt(input.number_of_videos, 10) || 5, 1), ANGLES.length);
   const selected = ANGLES.slice(0, count);
 
   const videos: VelocityVideo[] = selected.map((a, i) => ({
-    index: i + 1,
-    angle: a.kind,
-    workingTitle: a.title(topic),
+    video_number: i + 1,
+    title: a.title(topic),
     hook: a.hook(topic),
-    beat1: a.beat1(topic),
-    beat2: a.beat2(topic),
-    cta: i === count - 1
-      ? `Follow for the full ${topic} series — DM "${topic}" for the playbook.`
-      : `Save this. Tomorrow: ${selected[i + 1]?.kind ?? "next angle"}.`,
+    angle: a.kind,
+    script_summary: a.scriptSummary(topic),
+    visual_direction: a.visual,
+    cta: a.cta(topic, i === count - 1, selected[i + 1]?.kind),
   }));
 
-  const minutesPerVideo = 12; // rough one-take + reset budget
+  const gap = DAY_GAP[input.publishing_frequency];
+  const posting_schedule = videos.map((v) => ({
+    video_number: v.video_number,
+    day: nthDay(v.video_number - 1, gap),
+    window: input.platform === "linkedin" ? "07:30–09:30 local" : "18:00–21:00 local",
+  }));
+
   return {
-    videos,
-    shoot: {
-      setup: `Single static camera, eye-line at lens, ring light + one rim. ${PLATFORM_HOOK_RULE[input.platform]}`,
-      wardrobe: "Same outfit + same background for entire batch (continuity = thumb-stop consistency).",
-      rollOrder: [
-        "Warm up with #1 (most familiar angle)",
-        "Hardest angle second (highest energy)",
-        "Save Q&A / Recap for last (lowest cognitive load)",
-      ],
-      estimatedTime: `≈ ${count * minutesPerVideo} min camera time + 30 min reset.`,
-    },
-    publish: {
-      cadence: `1 video / day on ${VELOCITY_PLATFORM_LABELS[input.platform]} — same time slot to train the algorithm.`,
-      firstPost: "Post the Mistake angle first — historically the highest CTR opener.",
-    },
+    batch_strategy: `One topic ("${topic}") → ${count} angles in one shoot, published ${FREQUENCY_LABELS[input.publishing_frequency].toLowerCase()} on ${VELOCITY_PLATFORM_LABELS[input.platform]} for ${audience}. Optimised for ${CONTENT_GOAL_LABELS[input.content_goal].toLowerCase()}. ${PLATFORM_HOOK_RULE[input.platform]}`,
+    video_batch_table: videos,
+    repurposing_plan: [
+      `Cut a 7-second teaser of the Mistake angle → cross-post 48h after the original.`,
+      `Stitch the top-3 hooks into a sizzle reel for paid ads or pinned post.`,
+      `Transcribe each video into a long-form thread / newsletter section.`,
+      input.source_material ? `Pull 1 quote from "${input.source_material}" per video as a still graphic.` : `Pull one screenshot per video as a standalone still graphic.`,
+    ],
+    posting_schedule,
+    production_checklist: [
+      `Single static camera, eye-line at lens, ring light + one rim.`,
+      `Same outfit + same background for entire batch (continuity = thumb-stop consistency).`,
+      `Pre-write the on-screen text overlay for each video (≤ 5 words each).`,
+      `Roll order: Mistake → Framework → hardest angle → Q&A / Recap last.`,
+      `Estimated camera time: ≈ ${count * 12} min + 30 min reset.`,
+      `Edit + caption #1 immediately; queue the rest at one per ${FREQUENCY_LABELS[input.publishing_frequency].toLowerCase()} interval.`,
+    ],
+    bottlenecks: [
+      `Editing is the bottleneck, not shooting. Pre-build a single template (intro card, captions, end card).`,
+      `If hook performance varies > 3x across the batch, the angle ordering is wrong — re-rank by past data.`,
+      `Cross-platform posting kills algorithmic momentum on ${VELOCITY_PLATFORM_LABELS[input.platform]} — wait 48h.`,
+    ],
+    distribution_recommendation: `Native upload to ${VELOCITY_PLATFORM_LABELS[input.platform]} at the same time slot per ${FREQUENCY_LABELS[input.publishing_frequency].toLowerCase()} interval (${PLATFORM_LENGTH[input.platform]}). Cross-post the Mistake angle (#1) to a second platform after 48h to test transfer.`,
+    success_metric: `Median 3-second view rate ≥ 65% across the batch. Watch the angle that wins — that's next batch's spine. Tie back to: "${CONTENT_GOAL_LABELS[input.content_goal]}".`,
   };
 }
 
-export function formatBatch(input: VelocityInput, plan: VelocityBatch): string {
+export function formatVideoVelocity(input: VideoVelocityInput, plan: VideoVelocityOutput): string {
   return [
-    `BATCH TOPIC: ${input.batchTopic}`,
-    `PLATFORM: ${VELOCITY_PLATFORM_LABELS[input.platform]} (${PLATFORM_LENGTH[input.platform]})`,
-    `VIDEO COUNT: ${plan.videos.length}`,
+    `BATCH TOPIC: ${input.batch_topic}`,
+    `PLATFORM: ${VELOCITY_PLATFORM_LABELS[input.platform]} (${PLATFORM_LENGTH[input.platform]}) · FREQUENCY: ${FREQUENCY_LABELS[input.publishing_frequency]}`,
+    `AUDIENCE: ${input.audience} · GOAL: ${CONTENT_GOAL_LABELS[input.content_goal]}`,
+    `SOURCE MATERIAL: ${input.source_material || "—"}`,
+    `VIDEO COUNT: ${plan.video_batch_table.length}`,
+    "",
+    "BATCH STRATEGY",
+    plan.batch_strategy,
     "",
     "VIDEOS",
-    ...plan.videos.flatMap((v) => [
-      `--- #${v.index} · ${v.angle} ---`,
-      `Title: ${v.workingTitle}`,
-      `Hook:  ${v.hook}`,
-      `Beat1: ${v.beat1}`,
-      `Beat2: ${v.beat2}`,
-      `CTA:   ${v.cta}`,
+    ...plan.video_batch_table.flatMap((v) => [
+      `--- #${v.video_number} · ${v.angle} ---`,
+      `Title:   ${v.title}`,
+      `Hook:    ${v.hook}`,
+      `Script:  ${v.script_summary}`,
+      `Visual:  ${v.visual_direction}`,
+      `CTA:     ${v.cta}`,
       "",
     ]),
-    "SHOOT PLAN",
-    `- Setup: ${plan.shoot.setup}`,
-    `- Wardrobe: ${plan.shoot.wardrobe}`,
-    "- Roll order:",
-    ...plan.shoot.rollOrder.map((r, i) => `  ${i + 1}. ${r}`),
-    `- Estimated: ${plan.shoot.estimatedTime}`,
+    "POSTING SCHEDULE",
+    ...plan.posting_schedule.map((p) => `- #${p.video_number} → ${p.day} (${p.window})`),
     "",
-    "PUBLISH PLAN",
-    `- Cadence: ${plan.publish.cadence}`,
-    `- First post: ${plan.publish.firstPost}`,
+    "PRODUCTION CHECKLIST",
+    ...plan.production_checklist.map((p, i) => `${i + 1}. ${p}`),
+    "",
+    "REPURPOSING PLAN",
+    ...plan.repurposing_plan.map((r, i) => `${i + 1}. ${r}`),
+    "",
+    "BOTTLENECKS",
+    ...plan.bottlenecks.map((b, i) => `${i + 1}. ${b}`),
     formatFooter({
       nextSteps: [
         `Block 90 minutes on the calendar for the shoot — same outfit, same background.`,
         `Pre-write the on-screen text overlay for each video (≤ 5 words each).`,
-        `Set up the camera and shoot all ${plan.videos.length} in one session, in roll order.`,
-        `Edit + caption #1 immediately; queue the rest at one per day.`,
+        `Set up the camera and shoot all ${plan.video_batch_table.length} in one session, in roll order.`,
+        `Edit + caption #1 immediately; queue the rest on the schedule above.`,
       ],
-      distribution: `Native upload to ${VELOCITY_PLATFORM_LABELS[input.platform]} at the same time slot daily. Cross-post the Mistake angle (#1) to a second platform after 48h to test transfer.`,
-      successMetric: `Median 3-second view rate ≥ 65% across the batch. Watch the angle that wins — that's next batch's spine.`,
+      distribution: plan.distribution_recommendation,
+      successMetric: plan.success_metric,
     }),
   ].join("\n");
 }

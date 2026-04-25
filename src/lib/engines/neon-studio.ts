@@ -1,5 +1,5 @@
-// Neon Studio — turns visual style + scene idea + platform
-// into a directable visual brief / scene direction.
+// Neon Studio — visual direction, scene language, thumbnail concepts,
+// and image/video prompt packs.
 import { formatFooter } from "./output-footer";
 
 export type VisualStyle =
@@ -9,7 +9,9 @@ export type VisualStyle =
   | "warm-cinematic"
   | "retro-vhs";
 
-export type Platform = "instagram" | "tiktok" | "youtube" | "x" | "linkedin";
+export type NeonPlatform = "instagram" | "tiktok" | "youtube" | "x" | "linkedin";
+
+export type AspectRatio = "9:16" | "1:1" | "4:5" | "16:9" | "1.91:1";
 
 export const STYLE_LABELS: Record<VisualStyle, string> = {
   "neon-cyberpunk": "Neon cyberpunk",
@@ -19,43 +21,20 @@ export const STYLE_LABELS: Record<VisualStyle, string> = {
   "retro-vhs": "Retro VHS",
 };
 
-export const PLATFORM_LABELS: Record<Platform, string> = {
+export const NEON_PLATFORM_LABELS: Record<NeonPlatform, string> = {
   instagram: "Instagram",
   tiktok: "TikTok",
   youtube: "YouTube",
-  x: "X (Twitter)",
+  x: "X",
   linkedin: "LinkedIn",
 };
 
-const PLATFORM_SPEC: Record<
-  Platform,
-  { ratio: string; safeZone: string; durationOrSize: string }
-> = {
-  instagram: {
-    ratio: "4:5 feed / 9:16 reel",
-    safeZone: "Top 220px and bottom 320px reserved for UI",
-    durationOrSize: "Reel 7–15s, hook in first 1.5s",
-  },
-  tiktok: {
-    ratio: "9:16",
-    safeZone: "Right 96px (action bar) + bottom 240px (caption)",
-    durationOrSize: "15–30s, hook + payoff under 7s",
-  },
-  youtube: {
-    ratio: "16:9 thumbnail / 9:16 Shorts",
-    safeZone: "Bottom-right reserved for duration badge",
-    durationOrSize: "Thumbnail readable at 320×180px",
-  },
-  x: {
-    ratio: "16:9 inline / 1:1 timeline",
-    safeZone: "No platform UI overlay; full canvas",
-    durationOrSize: "Single hero frame, ≤ 4s if video",
-  },
-  linkedin: {
-    ratio: "1.91:1 share / 4:5 native video",
-    safeZone: "Avoid bottom 64px (engagement bar on mobile)",
-    durationOrSize: "Hero + 2 supporting frames, captions burned in",
-  },
+export const ASPECT_LABELS: Record<AspectRatio, string> = {
+  "9:16": "9:16 (vertical)",
+  "1:1": "1:1 (square)",
+  "4:5": "4:5 (feed)",
+  "16:9": "16:9 (horizontal)",
+  "1.91:1": "1.91:1 (link card)",
 };
 
 const STYLE_PALETTE: Record<VisualStyle, { palette: string; lighting: string; texture: string }> = {
@@ -86,82 +65,123 @@ const STYLE_PALETTE: Record<VisualStyle, { palette: string; lighting: string; te
   },
 };
 
-export interface NeonInput {
-  visualStyle: VisualStyle;
-  scene: string;
-  platform: Platform;
+export interface NeonStudioInput {
+  video_topic: string;
+  visual_style: VisualStyle;
+  platform: NeonPlatform;
+  scene_idea: string;
+  brand_mood: string;
+  color_direction: string;
+  reference_style: string;
+  aspect_ratio: AspectRatio;
 }
 
-interface SceneDirection {
-  shotList: string[];
-  composition: string;
-  motion: string;
-  onScreenText: string;
-  doNot: string[];
+export interface NeonStudioOutput {
+  visual_concept: string;
+  art_direction: { palette: string; lighting: string; texture: string };
+  scene_style_guide: string;
+  shot_list: string[];
+  lighting_notes: string;
+  composition_notes: string;
+  thumbnail_concepts: string[];
+  image_generation_prompts: string[];
+  video_generation_prompts: string[];
+  negative_prompts: string[];
+  distribution_recommendation: string;
+  success_metric: string;
 }
 
-export function generateSceneBrief(input: NeonInput): SceneDirection {
-  const scene = input.scene || "your scene";
-  const isVertical = input.platform === "tiktok" ||
-    input.platform === "instagram";
+export function generateNeonStudio(input: NeonStudioInput): NeonStudioOutput {
+  const palette = STYLE_PALETTE[input.visual_style];
+  const scene = input.scene_idea || input.video_topic || "your scene";
+  const isVertical = input.aspect_ratio === "9:16" || input.aspect_ratio === "4:5";
+  const platform = NEON_PLATFORM_LABELS[input.platform];
+  const moodSuffix = input.brand_mood ? `, mood: ${input.brand_mood}` : "";
+  const colorSuffix = input.color_direction ? `, color direction: ${input.color_direction}` : "";
+  const refSuffix = input.reference_style ? `, in the style of ${input.reference_style}` : "";
+
   return {
-    shotList: [
-      `Establishing: wide of "${scene}" — frame for ${isVertical ? "vertical" : "horizontal"} read`,
-      `Hero: medium close-up isolating the subject of "${scene}"`,
-      `Detail: macro insert that reveals the "why" of the scene`,
-      `Cutaway: B-roll that lets the edit breathe between cuts`,
+    visual_concept: `${STYLE_LABELS[input.visual_style]} treatment of "${scene}" for ${platform} at ${input.aspect_ratio}${moodSuffix}.`,
+    art_direction: palette,
+    scene_style_guide: `Subject ${isVertical ? "centered upper-third" : "on left third"}; ${isVertical ? "lower-third reserved for captions/CTA" : "right negative space reserved for text"}. Single accent color from the palette only. One light source visible in frame; never two.`,
+    shot_list: [
+      `Establishing wide of "${scene}" — frame for ${input.aspect_ratio}.`,
+      `Hero medium close-up isolating the subject of "${scene}".`,
+      `Macro insert revealing the "why" of the scene (texture / detail).`,
+      `Cutaway B-roll that lets the edit breathe between cuts.`,
     ],
-    composition: isVertical
-      ? "Subject vertically centered upper-third; leave lower-third for captions and CTA."
-      : "Rule-of-thirds; subject on left vertical line, negative space right for text.",
-    motion: isVertical
-      ? "Locked-off or slow push-in. No swish-pans. Cut on action every 2–3s."
-      : "One slow dolly per shot. Avoid handheld unless tone calls for it.",
-    onScreenText: `One line, ≤ 5 words. Anchor to the promise of "${scene}". Burn captions in for ${PLATFORM_LABELS[input.platform]}.`,
-    doNot: [
-      "No multi-line text overlays.",
-      "No more than one accent color from the palette.",
-      "No stock music with vocals on top of dialogue.",
+    lighting_notes: palette.lighting + ". Avoid mixed color temperatures unless the style explicitly calls for it.",
+    composition_notes: isVertical
+      ? "Rule-of-thirds vertically. Eye-line at upper-third intersection. Leave bottom 30% clean for captions."
+      : "Rule-of-thirds horizontally. Subject on left vertical line, negative space right for text overlay.",
+    thumbnail_concepts: [
+      `Bold 3-word phrase from the topic + circled object + face on right (high contrast against ${palette.palette.split("·")[0].trim()}).`,
+      `Before/after split — left "${input.video_topic || "before"}" / right "after". One accent color across both sides for unity.`,
+      `Single number on screen tied to the proof (e.g. "3X", "$0 → $X") + reaction crop of subject.`,
     ],
+    image_generation_prompts: [
+      `${STYLE_LABELS[input.visual_style]} editorial photograph of "${scene}", ${input.aspect_ratio} aspect, ${palette.lighting.toLowerCase()}, ${palette.texture.toLowerCase()}${colorSuffix}${refSuffix}, sharp subject focus, professional camera, 35mm.`,
+      `Macro detail of the key object in "${scene}", ${STYLE_LABELS[input.visual_style].toLowerCase()} aesthetic, ${palette.palette}, shallow depth of field, single accent light.`,
+      `Wide environmental establishing shot of "${scene}", ${STYLE_LABELS[input.visual_style].toLowerCase()}, dramatic ${palette.lighting.toLowerCase()}, no text, no people if possible.`,
+    ],
+    video_generation_prompts: [
+      `Cinematic ${input.aspect_ratio} video of "${scene}", ${STYLE_LABELS[input.visual_style].toLowerCase()} grade, slow push-in over 3 seconds, locked-off camera otherwise, ${palette.lighting.toLowerCase()}, 24fps, anamorphic feel.`,
+      `${input.aspect_ratio} B-roll of the macro detail in "${scene}", slow rack focus, ${palette.texture.toLowerCase()}, no on-screen text, 4 seconds.`,
+      `${input.aspect_ratio} hero shot of subject of "${scene}", subtle parallax / drift, ${palette.palette}, eye-line at lens, 5 seconds.`,
+    ],
+    negative_prompts: [
+      "no extra fingers, no text artifacts, no watermark",
+      "no multiple light sources of mixed color temperature unless intentional",
+      "no oversaturation, no plastic skin, no AI smoothing",
+      "no busy backgrounds; preserve negative space for overlay text",
+    ],
+    distribution_recommendation: `Native upload to ${platform} at ${input.aspect_ratio}. Burn captions in. Cross-post the hero frame as a still on adjacent platforms; never repost the same vertical to a horizontal feed.`,
+    success_metric: `Thumb-stop rate (3-second view %) ≥ platform median for ${platform}. Track per-shot retention to learn which frame works.`,
   };
 }
 
-export function formatSceneBrief(input: NeonInput, dir: SceneDirection): string {
-  const spec = PLATFORM_SPEC[input.platform];
-  const style = STYLE_PALETTE[input.visualStyle];
+export function formatNeonStudio(input: NeonStudioInput, out: NeonStudioOutput): string {
   return [
-    `STYLE: ${STYLE_LABELS[input.visualStyle]}`,
-    `PLATFORM: ${PLATFORM_LABELS[input.platform]}`,
-    `SCENE: ${input.scene}`,
+    `TOPIC: ${input.video_topic}`,
+    `STYLE: ${STYLE_LABELS[input.visual_style]} · PLATFORM: ${NEON_PLATFORM_LABELS[input.platform]} · ASPECT: ${ASPECT_LABELS[input.aspect_ratio]}`,
+    `MOOD: ${input.brand_mood || "—"} · COLOR: ${input.color_direction || "—"} · REFERENCE: ${input.reference_style || "—"}`,
+    `SCENE: ${input.scene_idea}`,
     "",
-    "PLATFORM SPEC",
-    `- Ratio: ${spec.ratio}`,
-    `- Safe zone: ${spec.safeZone}`,
-    `- Duration / size: ${spec.durationOrSize}`,
+    "VISUAL CONCEPT",
+    out.visual_concept,
     "",
-    "VISUAL DIRECTION",
-    `- Palette: ${style.palette}`,
-    `- Lighting: ${style.lighting}`,
-    `- Texture: ${style.texture}`,
+    "ART DIRECTION",
+    `- Palette:  ${out.art_direction.palette}`,
+    `- Lighting: ${out.art_direction.lighting}`,
+    `- Texture:  ${out.art_direction.texture}`,
+    "",
+    `SCENE STYLE GUIDE: ${out.scene_style_guide}`,
+    `LIGHTING NOTES: ${out.lighting_notes}`,
+    `COMPOSITION NOTES: ${out.composition_notes}`,
     "",
     "SHOT LIST",
-    ...dir.shotList.map((s, i) => `${i + 1}. ${s}`),
+    ...out.shot_list.map((s, i) => `${i + 1}. ${s}`),
     "",
-    `COMPOSITION: ${dir.composition}`,
-    `MOTION: ${dir.motion}`,
-    `ON-SCREEN TEXT: ${dir.onScreenText}`,
+    "THUMBNAIL CONCEPTS",
+    ...out.thumbnail_concepts.map((t, i) => `${i + 1}. ${t}`),
     "",
-    "DO NOT",
-    ...dir.doNot.map((d, i) => `${i + 1}. ${d}`),
+    "IMAGE GENERATION PROMPTS",
+    ...out.image_generation_prompts.map((p, i) => `${i + 1}. ${p}`),
+    "",
+    "VIDEO GENERATION PROMPTS",
+    ...out.video_generation_prompts.map((p, i) => `${i + 1}. ${p}`),
+    "",
+    "NEGATIVE PROMPTS",
+    ...out.negative_prompts.map((n, i) => `${i + 1}. ${n}`),
     formatFooter({
       nextSteps: [
         `Lock location + props before camera (use the palette swatch as your shopping list).`,
-        `Light a test frame and screenshot — confirm the on-screen text is readable at thumbnail size.`,
+        `Light a test frame and screenshot — confirm on-screen text is readable at thumbnail size.`,
         `Shoot all 4 shots in one block; don't review until you're done with shot 4.`,
         `Edit a single 5-second cut first to validate the rhythm before the full edit.`,
       ],
-      distribution: `Native upload to ${PLATFORM_LABELS[input.platform]} in the ratio above. Burn captions in. Cross-post the hero frame as a still on adjacent platforms (no native repost).`,
-      successMetric: `Thumb-stop rate (3-second view %) ≥ platform median for ${PLATFORM_LABELS[input.platform]}. Track per-shot retention to learn which frame works.`,
+      distribution: out.distribution_recommendation,
+      successMetric: out.success_metric,
     }),
   ].join("\n");
 }
