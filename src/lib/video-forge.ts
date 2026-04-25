@@ -1126,6 +1126,94 @@ export function validateVideoForgeOutput(
     if (!isNonEmptyString(out.captions.long_caption)) errors.push("captions.long_caption is empty.");
   }
 
+  // Speakability: spoken-text fields must contain dialogue, not stage
+  // directions. Flag sentences that begin with instructional verbs
+  // (Explain / Discuss / Show / Introduce + a few obvious siblings) and
+  // any bracketed stage directions left inline. We only scan the spoken
+  // surfaces — `voiceover_note`, `suggested_visual`, `b_roll_or_stock_query`,
+  // `scene_purpose`, and on-screen text are *meant* to be directions.
+  const spokenIssues = collectSpeakabilityIssues(out);
+  errors.push(...spokenIssues);
+
   return { ok: errors.length === 0, errors };
+}
+
+/**
+ * Returns a list of issues for any spoken-text field that reads like a
+ * stage direction instead of a line a creator could deliver on camera.
+ *
+ * Rules:
+ * - A sentence that **starts** with an instructional verb in imperative
+ *   form (Explain / Discuss / Show / Introduce / Demonstrate / Describe /
+ *   Outline / Highlight / Mention / Cover / Talk about) is flagged. We
+ *   match the start of a sentence so natural in-line uses ("I'll show
+ *   you what I mean.") are not penalized.
+ * - Bracketed stage directions inside narration ("[Cold open over B-roll]",
+ *   "[on-screen: …]") are flagged — they belong on visual fields.
+ */
+const INSTRUCTIONAL_VERBS = [
+  "explain",
+  "discuss",
+  "show",
+  "introduce",
+  "demonstrate",
+  "describe",
+  "outline",
+  "highlight",
+  "mention",
+  "cover",
+  "talk about",
+];
+
+const SENTENCE_START_RE = new RegExp(
+  // Start of string OR after sentence-ending punctuation + whitespace.
+  // Capture the leading word (or two for "talk about").
+  `(?:^|[.!?]\\s+)(${INSTRUCTIONAL_VERBS.map((v) => v.replace(" ", "\\s+")).join("|")})\\b`,
+  "i",
+);
+
+const STAGE_DIRECTION_RE = /\[[^\]]+\]/;
+
+function findInstructionalVerb(text: string): string | null {
+  const m = text.match(SENTENCE_START_RE);
+  return m ? m[1].toLowerCase().replace(/\s+/g, " ") : null;
+}
+
+function findStageDirection(text: string): string | null {
+  const m = text.match(STAGE_DIRECTION_RE);
+  return m ? m[0] : null;
+}
+
+function checkSpoken(label: string, text: string, errors: string[]): void {
+  if (!isNonEmptyString(text)) return;
+  const verb = findInstructionalVerb(text);
+  if (verb) {
+    errors.push(
+      `${label}: starts with instructional verb "${verb}" — rewrite as a line to say.`,
+    );
+  }
+  const stage = findStageDirection(text);
+  if (stage) {
+    errors.push(
+      `${label}: contains stage direction ${stage} — keep directions in scene visuals/voiceover, not narration.`,
+    );
+  }
+}
+
+function collectSpeakabilityIssues(out: VideoForgeOutput): string[] {
+  const errors: string[] = [];
+  checkSpoken("opening_hook", out.opening_hook, errors);
+  if (out.script_sections) {
+    for (const k of REQUIRED_SCRIPT_SECTIONS) {
+      checkSpoken(`script_sections.${k}`, out.script_sections[k] ?? "", errors);
+    }
+  }
+  if (Array.isArray(out.scene_breakdown)) {
+    out.scene_breakdown.forEach((scene, idx) => {
+      const label = `Scene ${scene?.scene_number ?? idx + 1} narration`;
+      checkSpoken(label, scene?.narration ?? "", errors);
+    });
+  }
+  return errors;
 }
 
