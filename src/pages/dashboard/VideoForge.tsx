@@ -26,6 +26,7 @@ import {
   TONE_LABELS,
   formatVideoForge,
   generateVideoForge,
+  validateVideoForgeOutput,
   type VideoForgeInput,
   type VideoForgeOutput,
   type VideoFormat,
@@ -81,6 +82,19 @@ const VideoForge = () => {
 
     const result = generateVideoForge(fields);
     setOutput(result);
+
+    // Pre-save validation: every required output field must be present and
+    // non-empty, and every scene must carry the production fields.
+    const validation = validateVideoForgeOutput(result);
+    if (!validation.ok) {
+      setSaving(false);
+      toast({
+        title: "Video plan is incomplete — not saved",
+        description: validation.errors.slice(0, 4).join(" · "),
+        variant: "destructive",
+      });
+      return;
+    }
 
     const markdown = formatVideoForge(fields, result);
     const content = buildEnvelope("video_forge", result, markdown);
@@ -393,7 +407,15 @@ const VideoForge = () => {
                 {output.scene_breakdown.map((s) => (
                   <li key={s.scene_number}>
                     <div>
-                      <span className="font-medium">{s.timecode} · {s.scene_purpose}</span>
+                      <span className="font-medium">
+                        {s.timecode}
+                        {s.end_timecode ? `–${s.end_timecode}` : ""} · {s.scene_purpose}
+                      </span>
+                      {typeof s.duration_seconds === "number" ? (
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          (~{s.duration_seconds}s)
+                        </span>
+                      ) : null}
                     </div>
                     <div className="text-muted-foreground">{s.narration}</div>
                     <div className="text-xs text-muted-foreground">

@@ -130,7 +130,12 @@ export interface ScriptSections {
 
 export interface SceneBreakdownItem {
   scene_number: number;
+  /** Start timecode, m:ss. */
   timecode: string;
+  /** End timecode, m:ss (additive — same shape as `timecode`). */
+  end_timecode?: string;
+  /** Approximate scene duration in seconds (additive). */
+  duration_seconds?: number;
   scene_purpose: string;
   narration: string;
   suggested_visual: string;
@@ -613,13 +618,26 @@ function buildSceneBreakdown(
   const count = sceneCountForMode(mode, input.target_length);
   const scenes = seeds.slice(0, count);
   const total = approxDurationSeconds(mode, input.target_length);
-  const per = total / scenes.length;
 
+  // Distribute total seconds evenly across scenes. Remaining seconds (from
+  // integer flooring) are spread one-by-one to the earliest scenes so the
+  // sum of durations exactly matches `total`.
+  const n = scenes.length;
+  const base = Math.floor(total / n);
+  const remainder = total - base * n;
+  const durations = scenes.map((_, i) => base + (i < remainder ? 1 : 0));
+
+  let cursor = 0;
   return scenes.map((s, i) => {
-    const start = Math.round(i * per);
+    const start = cursor;
+    const dur = durations[i];
+    const end = start + dur;
+    cursor = end;
     return {
       scene_number: i + 1,
       timecode: timecode(start),
+      end_timecode: timecode(end),
+      duration_seconds: dur,
       scene_purpose: s.purpose,
       narration:
         s.narrationKey === "custom" && s.customNarration
@@ -943,15 +961,20 @@ export function formatVideoForge(input: VideoForgeInput, out: VideoForgeOutput):
     `CTA:      ${out.script_sections.cta}`,
     "",
     "SCENE BREAKDOWN",
-    ...out.scene_breakdown.flatMap((s) => [
-      `--- Scene ${s.scene_number} · ${s.timecode} · ${s.scene_purpose} ---`,
-      `Narration: ${s.narration}`,
-      `Visual:    ${s.suggested_visual}`,
-      `Stock/B-roll search: ${s.b_roll_or_stock_query}`,
-      `On-screen: ${s.on_screen_text || "—"}`,
-      `VO note:   ${s.voiceover_note}`,
-      "",
-    ]),
+    ...out.scene_breakdown.flatMap((s) => {
+      const range = s.end_timecode ? `${s.timecode}–${s.end_timecode}` : s.timecode;
+      const dur =
+        typeof s.duration_seconds === "number" ? ` (~${s.duration_seconds}s)` : "";
+      return [
+        `--- Scene ${s.scene_number} · ${range}${dur} · ${s.scene_purpose} ---`,
+        `Narration: ${s.narration}`,
+        `Visual:    ${s.suggested_visual}`,
+        `Stock/B-roll search: ${s.b_roll_or_stock_query}`,
+        `On-screen: ${s.on_screen_text || "—"}`,
+        `VO note:   ${s.voiceover_note}`,
+        "",
+      ];
+    }),
     "STOCK FOOTAGE / B-ROLL SEARCH TERMS",
     ...out.stock_footage_terms.map((t, i) => `${i + 1}. ${t}`),
     "",
@@ -985,3 +1008,124 @@ export function formatVideoForge(input: VideoForgeInput, out: VideoForgeOutput):
     }),
   ].join("\n");
 }
+
+// ---------- validation ----------
+//
+// `validateVideoForgeOutput` is a hard pre-save guard. It enforces that
+// every required field on `VideoForgeOutput` is present and non-empty,
+// and that every scene carries the production fields a creator needs to
+// actually film. Returns a list of human-readable errors; empty list = ok.
+
+export interface VideoForgeValidationResult {
+  ok: boolean;
+  errors: string[];
+}
+
+const REQUIRED_STRING_FIELDS: (keyof VideoForgeOutput)[] = [
+  "video_title",
+  "core_angle",
+  "viewer_promise",
+  "opening_hook",
+  "full_script",
+  "distribution_recommendation",
+  "success_metric",
+];
+
+const REQUIRED_SCRIPT_SECTIONS: (keyof ScriptSections)[] = [
+  "intro",
+  "problem",
+  "insight",
+  "proof",
+  "solution",
+  "cta",
+];
+
+const REQUIRED_SCENE_FIELDS: (keyof SceneBreakdownItem)[] = [
+  "timecode",
+  "scene_purpose",
+  "narration",
+  "suggested_visual",
+  "b_roll_or_stock_query",
+  "on_screen_text",
+  "voiceover_note",
+];
+
+function isNonEmptyString(v: unknown): v is string {
+  return typeof v === "string" && v.trim().length > 0;
+}
+
+export function validateVideoForgeOutput(
+  out: VideoForgeOutput | null | undefined,
+): VideoForgeValidationResult {
+  const errors: string[] = [];
+  if (!out) {
+    return { ok: false, errors: ["No video output to save."] };
+  }
+
+  for (const f of REQUIRED_STRING_FIELDS) {
+    if (!isNonEmptyString(out[f] as unknown)) {
+      errors.push(`Missing or empty: ${f}`);
+    }
+  }
+
+  if (!out.script_sections || typeof out.script_sections !== "object") {
+    errors.push("Missing script_sections.");
+  } else {
+    for (const s of REQUIRED_SCRIPT_SECTIONS) {
+      if (!isNonEmptyString(out.script_sections[s])) {
+        errors.push(`Missing or empty script section: ${s}`);
+      }
+    }
+  }
+
+  if (!Array.isArray(out.scene_breakdown) || out.scene_breakdown.length === 0) {
+    errors.push("scene_breakdown must contain at least one scene.");
+  } else {
+    out.scene_breakdown.forEach((scene, idx) => {
+      const label = `Scene ${scene?.scene_number ?? idx + 1}`;
+      if (!scene || typeof scene !== "object") {
+        errors.push(`${label}: invalid scene object.`);
+        return;
+      }
+      for (const f of REQUIRED_SCENE_FIELDS) {
+        if (!isNonEmptyString(scene[f] as unknown)) {
+          errors.push(`${label}: missing ${f}.`);
+        }
+      }
+    });
+  }
+
+  if (!Array.isArray(out.stock_footage_terms) || out.stock_footage_terms.length === 0) {
+    errors.push("stock_footage_terms is empty.");
+  } else if (!out.stock_footage_terms.every(isNonEmptyString)) {
+    errors.push("stock_footage_terms contains an empty entry.");
+  }
+
+  if (!Array.isArray(out.on_screen_text_overlays) || out.on_screen_text_overlays.length === 0) {
+    errors.push("on_screen_text_overlays is empty.");
+  } else if (!out.on_screen_text_overlays.every(isNonEmptyString)) {
+    errors.push("on_screen_text_overlays contains an empty entry.");
+  }
+
+  if (!Array.isArray(out.voiceover_notes) || out.voiceover_notes.length === 0) {
+    errors.push("voiceover_notes is empty.");
+  } else if (!out.voiceover_notes.every(isNonEmptyString)) {
+    errors.push("voiceover_notes contains an empty entry.");
+  }
+
+  if (!Array.isArray(out.thumbnail_concepts) || out.thumbnail_concepts.length === 0) {
+    errors.push("thumbnail_concepts is empty.");
+  } else if (!out.thumbnail_concepts.every(isNonEmptyString)) {
+    errors.push("thumbnail_concepts contains an empty entry.");
+  }
+
+  if (!out.captions || typeof out.captions !== "object") {
+    errors.push("captions object is missing.");
+  } else {
+    if (!isNonEmptyString(out.captions.short_caption)) errors.push("captions.short_caption is empty.");
+    if (!isNonEmptyString(out.captions.long_caption)) errors.push("captions.long_caption is empty.");
+  }
+
+  return { ok: errors.length === 0, errors };
+}
+
