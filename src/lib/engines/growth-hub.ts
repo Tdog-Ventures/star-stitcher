@@ -1,5 +1,6 @@
 // Growth Hub — turns growth goal + current channel + bottleneck
 // into a structured growth experiment plan (ICE-scored).
+import { formatFooter } from "./output-footer";
 
 export type CurrentChannel =
   | "cold-email"
@@ -306,5 +307,15 @@ export function formatGrowthPlan(input: GrowthInput, plan: GrowthPlan): string {
     ]),
     `KILL CRITERIA: ${plan.killCriteria}`,
     `WEEKLY RITUAL: ${plan.weeklyRitual}`,
+    formatFooter({
+      nextSteps: [
+        `Pick the #1 ICE-ranked experiment above and write its hypothesis at the top of a doc.`,
+        `Set a baseline reading of "${plan.northStar}" today — you can't measure lift without it.`,
+        `Block the experiment's duration on calendar with the kill date marked.`,
+        `Schedule the Monday weekly ritual (15 min) for the full duration.`,
+      ],
+      distribution: `Run experiments inside ${CHANNEL_LABELS[input.channel]} only. Communicate results internally via a single Loom + 1-page summary — not a deck.`,
+      successMetric: plan.northStar,
+    }),
   ].join("\n");
 }
