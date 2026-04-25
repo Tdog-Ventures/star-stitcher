@@ -303,38 +303,41 @@ function buildCta(input: VideoForgeInput, mode: VideoMode): string {
   const topic = input.topic || "this";
   const who = input.target_audience || "founders";
 
+  // CTAs must be immediate. Each one names the action, the mechanism the
+  // viewer uses to take it, and a reason to do it now (urgency trigger).
+
   if (mode === "long_form") {
     if (input.video_goal === "sales" || input.video_goal === "product_demo") {
-      return `If this is the loop you want to run, the link in the description gets you started in two minutes. Subscribe so you don't miss the week-2 numbers — that's where it gets interesting.`;
+      return `Click the link in the description and start the loop today — first 50 each month get the onboarding call free. Subscribe so you catch the week-2 numbers; that's where it gets real.`;
     }
-    return `If this changed how you think about ${topic}, hit subscribe — the next video breaks down the week-2 review. And drop one word below: which step are you running first?`;
+    return `Run step one before you close this tab — pick the single input metric for ${topic} and write it down. Then comment that input below; I read every one for the first 24 hours.`;
   }
 
   if (mode === "faceless") {
-    return `Save this. Run the loop once this week. Comment "LOOP" and I'll send you the one-page template.`;
+    return `Save this clip now so you actually run the loop this week. Comment "LOOP" in the next 24h and I'll DM you the one-page template — after that it goes behind the email wall.`;
   }
 
   if (mode === "product_demo") {
-    return `Start free with the link below — no card, no email wall. Want a 5-minute walkthrough live? DM "DEMO" and we'll book it.`;
+    return `Click the link below and start free in two clicks — no card, no email wall. Want a live 5-minute walkthrough? DM "DEMO" today and we'll book it this week.`;
   }
 
-  // short_form: tighter CTAs
+  // short_form: tighter CTAs — action + mechanism + urgency.
   switch (input.video_goal) {
     case "sales":
-      return `Link in bio. Start ${topic} this week — the offer expires Sunday.`;
+      return `Tap the link in bio and start ${topic} this week — the offer closes Sunday at midnight, no extensions.`;
     case "marketing":
-      return `Comment "PLAYBOOK" and I'll send you the one-page version of this — free, no email.`;
+      return `Comment "PLAYBOOK" in the next 24h and I'll DM you the one-pager — free, no email, then it's gone.`;
     case "education":
     case "tutorial":
-      return `Save this so you actually do it. Run the 3 steps next time you touch ${topic}.`;
+      return `Hit save before you scroll, then run the 3 steps the next time you touch ${topic} — today if you can.`;
     case "thought_leadership":
-      return `Send this to one ${who} who needs to hear it. That's the share.`;
+      return `Send this to one ${who} who needs it today — that's the share. The ones who watch alone don't change anything.`;
     case "entertainment":
-      return `Follow for one more like this every Tuesday.`;
+      return `Follow now — next one drops Tuesday and you'll miss it if you don't.`;
     case "product_demo":
-      return `Link in bio — free trial, two-click setup.`;
+      return `Tap the link in bio and start free — two-click setup, live before your next coffee.`;
     default:
-      return `Comment "${topic.split(" ")[0].toUpperCase()}" and I'll send you the next step.`;
+      return `Comment "${topic.split(" ")[0].toUpperCase()}" in the next hour and I'll DM you the next step before this video stops trending.`;
   }
 }
 
