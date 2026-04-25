@@ -12,11 +12,16 @@ const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
 const STORAGE_KEY = "ethinx.theme";
 
+/**
+ * ETHINX is a dark-first system. The theme provider is kept for API
+ * compatibility (header toggles, tests), but the design tokens are tuned
+ * for the dark palette. We default to "dark" everywhere.
+ */
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("light");
+  const [theme, setThemeState] = useState<Theme>("dark");
 
   useEffect(() => {
-    const stored = (localStorage.getItem(STORAGE_KEY) as Theme | null) ?? "light";
+    const stored = (localStorage.getItem(STORAGE_KEY) as Theme | null) ?? "dark";
     setThemeState(stored);
   }, []);
 

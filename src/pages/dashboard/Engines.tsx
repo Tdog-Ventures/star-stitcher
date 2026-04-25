@@ -143,8 +143,8 @@ const Engines = () => (
             key={engine.key}
             className={
               engine.primary
-                ? "flex flex-col border-primary/50 transition-colors hover:border-primary"
-                : "flex flex-col transition-colors hover:border-primary/40"
+                ? "ethinx-hover-glow flex flex-col border-primary/50"
+                : "ethinx-hover-glow flex flex-col"
             }
           >
             <CardHeader>
