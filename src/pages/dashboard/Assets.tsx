@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Send } from "lucide-react";
+import { Eye, Plus, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -29,7 +29,7 @@ import {
   distributeFormSchema,
   type Channel,
 } from "@/lib/distribution";
-import { EngineLayout, AssetTable, type AssetRow } from "@/components/engine";
+import { EngineLayout, AssetTable, AssetPreviewRenderer, type AssetRow } from "@/components/engine";
 import type { EngineStatus } from "@/components/engine/StatusBadge";
 
 interface AssetRecord {
