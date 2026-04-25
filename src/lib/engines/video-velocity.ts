@@ -221,5 +221,15 @@ export function formatBatch(input: VelocityInput, plan: VelocityBatch): string {
     "PUBLISH PLAN",
     `- Cadence: ${plan.publish.cadence}`,
     `- First post: ${plan.publish.firstPost}`,
+    formatFooter({
+      nextSteps: [
+        `Block 90 minutes on the calendar for the shoot — same outfit, same background.`,
+        `Pre-write the on-screen text overlay for each video (≤ 5 words each).`,
+        `Set up the camera and shoot all ${plan.videos.length} in one session, in roll order.`,
+        `Edit + caption #1 immediately; queue the rest at one per day.`,
+      ],
+      distribution: `Native upload to ${VELOCITY_PLATFORM_LABELS[input.platform]} at the same time slot daily. Cross-post the Mistake angle (#1) to a second platform after 48h to test transfer.`,
+      successMetric: `Median 3-second view rate ≥ 65% across the batch. Watch the angle that wins — that's next batch's spine.`,
+    }),
   ].join("\n");
 }
