@@ -1294,36 +1294,48 @@ function findStageDirection(text: string): string | null {
   return m ? m[0] : null;
 }
 
-function checkSpoken(label: string, text: string, errors: string[]): void {
+function checkSpoken(
+  path: string,
+  text: string,
+  issues: VideoForgeValidationIssue[],
+): void {
   if (!isNonEmptyString(text)) return;
   const verb = findInstructionalVerb(text);
   if (verb) {
-    errors.push(
-      `${label}: starts with instructional verb "${verb}" — rewrite as a line to say.`,
-    );
+    issues.push({
+      path,
+      reason: `Starts with instructional verb "${verb}" — looks like stage direction, not spoken narration.`,
+      fix: "Rewrite as words the creator would say out loud.",
+    });
   }
   const stage = findStageDirection(text);
   if (stage) {
-    errors.push(
-      `${label}: contains stage direction ${stage} — keep directions in scene visuals/voiceover, not narration.`,
-    );
+    issues.push({
+      path,
+      reason: `Contains stage direction ${stage} — keep directions in scene visuals/voiceover, not narration.`,
+      fix: "Move the bracketed direction to suggested_visual or voiceover_note.",
+    });
   }
 }
 
-function collectSpeakabilityIssues(out: VideoForgeOutput): string[] {
-  const errors: string[] = [];
-  checkSpoken("opening_hook", out.opening_hook, errors);
+function collectSpeakabilityIssues(
+  out: VideoForgeOutput,
+  issues: VideoForgeValidationIssue[],
+): void {
+  checkSpoken("opening_hook", out.opening_hook, issues);
   if (out.script_sections) {
     for (const k of REQUIRED_SCRIPT_SECTIONS) {
-      checkSpoken(`script_sections.${k}`, out.script_sections[k] ?? "", errors);
+      checkSpoken(`script_sections.${k}`, out.script_sections[k] ?? "", issues);
     }
   }
   if (Array.isArray(out.scene_breakdown)) {
     out.scene_breakdown.forEach((scene, idx) => {
-      const label = `Scene ${scene?.scene_number ?? idx + 1} narration`;
-      checkSpoken(label, scene?.narration ?? "", errors);
+      checkSpoken(
+        `scene_breakdown[${idx}].narration`,
+        scene?.narration ?? "",
+        issues,
+      );
     });
   }
-  return errors;
 }
 
