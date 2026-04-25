@@ -140,5 +140,15 @@ export function formatBlueprint(input: BlueprintInput, plan: BlueprintPlan): str
     "",
     "90-DAY ROADMAP",
     ...plan.ninetyDay.map((d, i) => `${i + 1}. ${d}`),
+    formatFooter({
+      nextSteps: [
+        `Pick the top-2 pillars from the list and write 5 post hooks for each — by end of day.`,
+        `Set up a single email-capture page anchored on "${input.audience || "your audience"}".`,
+        `Block the weekly cadence above into your calendar (3 short-form, 1 long-form, 5 reply blocks).`,
+        `Schedule a Friday review: which pillar got most traction?`,
+      ],
+      distribution: `Lead with short-form on the platform where ${input.audience || "your audience"} already lurks. Mirror the same week's content into the long-form newsletter on Friday.`,
+      successMetric: plan.northStar,
+    }),
   ].join("\n");
 }
