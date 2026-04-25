@@ -391,6 +391,70 @@ const GeneratedVideos = () => {
     await handleRender({ ...rec, render_job_id: null, rendered_video_url: null, render_status: null }, meta);
   };
 
+  const handleCancel = async (rec: AssetRecord) => {
+    if (!user || !rec.render_job_id) return;
+    if (cancellingNow.has(rec.id)) return;
+    setCancellingNow((s) => new Set(s).add(rec.id));
+
+    const { data, error } = await supabase.functions.invoke("render-video-cancel", {
+      body: { job_id: rec.render_job_id, asset_id: rec.id },
+    });
+
+    setCancellingNow((s) => {
+      const n = new Set(s);
+      n.delete(rec.id);
+      return n;
+    });
+
+    if (error) {
+      toast({
+        title: "Cancel failed",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+    const payload = (data ?? {}) as {
+      status?: string;
+      already_terminal?: boolean;
+      rendered_video_url?: string | null;
+    };
+    const finalStatus = payload.status ?? "cancelled";
+
+    // Optimistic UI: reflect final state immediately.
+    setRows((prev) =>
+      prev.map((r) =>
+        r.id === rec.id
+          ? {
+              ...r,
+              render_status: finalStatus,
+              rendered_video_url: payload.rendered_video_url ?? r.rendered_video_url,
+            }
+          : r,
+      ),
+    );
+
+    // Stop polling for this asset — terminal state reached.
+    setPolling((p) => {
+      const n = new Set(p);
+      n.delete(rec.id);
+      return n;
+    });
+
+    if (payload.already_terminal) {
+      toast({
+        title: "Already finished",
+        description: `Job already ${finalStatus}, nothing to cancel.`,
+      });
+    } else {
+      toast({
+        title: "Render cancelled",
+        description: `Job ${rec.render_job_id} cancelled.`,
+      });
+    }
+    await load();
+  };
+
 
   const submit = async () => {
     if (!user || !selected) return;
