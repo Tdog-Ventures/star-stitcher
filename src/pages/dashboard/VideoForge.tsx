@@ -407,7 +407,15 @@ const VideoForge = () => {
                 {output.scene_breakdown.map((s) => (
                   <li key={s.scene_number}>
                     <div>
-                      <span className="font-medium">{s.timecode} · {s.scene_purpose}</span>
+                      <span className="font-medium">
+                        {s.timecode}
+                        {s.end_timecode ? `–${s.end_timecode}` : ""} · {s.scene_purpose}
+                      </span>
+                      {typeof s.duration_seconds === "number" ? (
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          (~{s.duration_seconds}s)
+                        </span>
+                      ) : null}
                     </div>
                     <div className="text-muted-foreground">{s.narration}</div>
                     <div className="text-xs text-muted-foreground">
