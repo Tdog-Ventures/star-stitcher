@@ -216,33 +216,33 @@ function buildHook(input: VideoForgeInput, mode: VideoMode): string {
   if (mode === "short_form") {
     switch (input.tone) {
       case "controversial":
-        return `Everyone telling ${who} how to do ${topic} is wrong. Here's the proof — in 30 seconds.`;
+        return `Everything ${who} get told about ${topic} is built on one wrong assumption. Here it is — in 30 seconds.`;
       case "bold":
-        return `${who}, stop scrolling. If ${topic} matters to you, the next 30 seconds change how you do it.`;
+        return `${who}: ${topic} isn't broken. You're running half the loop. Watch what fixes it in 30 seconds.`;
       case "storytelling":
-        return `I tried ${topic} the way ${who} are told to. It failed. This is what actually worked.`;
+        return `I did ${topic} the way ${who} are told to. It bombed. Here's the version that actually worked.`;
       case "casual":
-        return `Quick one: the one thing nobody tells ${who} about ${topic}.`;
+        return `Nobody tells ${who} this about ${topic} — and it's the only part that matters. Quick one.`;
       case "cinematic":
-        return `${topic}. One move. Most ${who} never make it. Watch.`;
+        return `${topic}. One move. Most ${who} never make it. The next 30 seconds show why.`;
       case "educational":
-        return `In 30 seconds, ${who} will understand ${topic} better than 90% of the field. Go.`;
+        return `Thirty seconds from now, ${who} will see ${topic} the way the top 10% do. Press play.`;
       case "professional":
       default:
-        return `If you're ${who} and you care about ${topic}, here's the 30-second version that actually matters.`;
+        return `${who}: here's the 30-second version of ${topic} that actually moves the needle.`;
     }
   }
 
   if (mode === "long_form") {
-    return `In the next few minutes, I'm going to show ${who} exactly how to think about ${topic} — including the one mistake that costs most people six months. Stay until the end; the third move is the one nobody talks about.`;
+    return `Most ${who} approach ${topic} the wrong way — and it costs them six months. In the next few minutes I'll show you the one reframe that fixes it, the proof it works, and the 3-step plan you can run this week. The third step is the one nobody talks about.`;
   }
 
   if (mode === "faceless") {
-    return `${topic}. Most ${who} get this wrong on day one. Watch what changes when you flip just one thing — no talking head, just the truth on screen.`;
+    return `${topic}. Most ${who} get the first move wrong. Flip one thing — and the whole loop changes.`;
   }
 
   // product_demo
-  return `In the next 60 seconds I'll show ${who} exactly how ${topic} works — live, in the product, no slides, no fluff. By the end you'll know if it's right for you.`;
+  return `Sixty seconds. ${topic}, live, in the product. By the end you'll know if it's right for you.`;
 }
 
 // ---------- script sections ----------
@@ -265,33 +265,33 @@ function buildScriptSections(input: VideoForgeInput, mode: VideoMode): ScriptSec
 
   if (mode === "faceless") {
     return {
-      intro: `[Cold open over B-roll] If you're ${who}, ${topic} probably feels harder than it should. There's a reason — and a fix.`,
-      problem: `[Stat or screen recording] The problem most ${who} hit with ${topic}: they optimize the wrong layer. Here's what that looks like.`,
-      insight: `[Animated diagram] One reframe changes everything: ${topic} isn't a tactic, it's a system. Each piece feeds the next.`,
-      proof: `[Before/after on screen] Watch the numbers. Same effort, different framing — same result, every time.`,
-      solution: `[Numbered cards] Three steps you can run this week to ${outcome}: define the loop, run one weekly experiment, review every Friday.`,
+      intro: `If you're ${who}, ${topic} feels harder than it should. There's a reason. And there's a fix.`,
+      problem: `Most ${who} fix the wrong layer first. They tweak the surface. The break is one level down.`,
+      insight: `${topic} isn't one move. It's a loop. Each piece feeds the next — that's why the wins compound.`,
+      proof: `Same effort. New framing. The numbers move every time. Watch the curve, not the day-one spike.`,
+      solution: `Three steps to ${outcome}. One: name the loop. Two: ship one experiment this week. Three: review on Friday.`,
       cta: buildCta(input, mode),
     };
   }
 
   if (mode === "product_demo") {
     return {
-      intro: `Quick demo: I'll show ${who} how ${topic} works, end-to-end, in under two minutes. No slides. No setup. Just the actual product.`,
-      problem: `Most ${who} waste 30 minutes a day on this. Here's the screen they're stuck on today.`,
-      insight: `One click into our flow and that 30 minutes becomes 30 seconds — because we built around the actual job, not the tool.`,
-      proof: `Watch me run a real example, live. No edits. From empty state to finished result.`,
-      solution: `Here's how you'd use it on day one: connect, configure once, then ship. That's the entire loop.`,
+      intro: `Quick demo. ${topic}, end-to-end, in under two minutes. No slides. No setup. Just the product.`,
+      problem: `Most ${who} burn thirty minutes a day on this exact screen. Watch.`,
+      insight: `One click in our flow, and that thirty minutes is thirty seconds. We built around the job, not the tool.`,
+      proof: `Real example. Live. No edits. Empty state to finished result, right now.`,
+      solution: `Day one looks like this. Connect once. Configure once. Then ship. That's the whole loop.`,
       cta: buildCta(input, mode),
     };
   }
 
   // short_form
   return {
-    intro: `One line, eyes on lens: this is for ${who} who want to ${outcome}.`,
-    problem: `The pain: ${who} keep grinding ${topic} and getting nothing back. One concrete example — name it.`,
-    insight: `The reframe: ${topic} isn't a tactic, it's a loop. Most people only run half of it.`,
-    proof: `Quick proof: a number, a screenshot, or a before/after. One frame, big text.`,
-    solution: `The move: 1) define one input. 2) ship one experiment per week. 3) review every Friday. That's it.`,
+    intro: `If you're ${who} and you want to ${outcome}, this is the 30 seconds that matters.`,
+    problem: `${who} keep grinding ${topic} and getting nothing back. Same effort. Same dead end. Every week.`,
+    insight: `${topic} isn't a tactic. It's a loop. Most people only run half of it — that's why it stalls.`,
+    proof: `One number tells the story. Same person, same product, twice the result — the only thing that changed was the loop.`,
+    solution: `Do three things. Pick one input. Ship one experiment a week. Review every Friday. That's it.`,
     cta: buildCta(input, mode),
   };
 }
@@ -302,36 +302,36 @@ function buildCta(input: VideoForgeInput, mode: VideoMode): string {
 
   if (mode === "long_form") {
     if (input.video_goal === "sales" || input.video_goal === "product_demo") {
-      return `If this is the loop you want to run, the link in the description is the fastest way in. Subscribe so you don't miss the follow-up where I break down the week-2 numbers.`;
+      return `If this is the loop you want to run, the link in the description gets you started in two minutes. Subscribe so you don't miss the week-2 numbers — that's where it gets interesting.`;
     }
-    return `If this changed how you think about ${topic}, hit subscribe — the next video goes deeper on the week-2 review. And drop one word in the comments: which step are you running first?`;
+    return `If this changed how you think about ${topic}, hit subscribe — the next video breaks down the week-2 review. And drop one word below: which step are you running first?`;
   }
 
   if (mode === "faceless") {
-    return `Save this. Run the loop once. Comment "${topic}" when you do — I'll send the template.`;
+    return `Save this. Run the loop once this week. Comment "LOOP" and I'll send you the one-page template.`;
   }
 
   if (mode === "product_demo") {
-    return `Try it free with the link below. If you want a 5-minute walkthrough live, DM "${topic}" and we'll book it.`;
+    return `Start free with the link below — no card, no email wall. Want a 5-minute walkthrough live? DM "DEMO" and we'll book it.`;
   }
 
   // short_form: tighter CTAs
   switch (input.video_goal) {
     case "sales":
-      return `Link in bio. Start ${topic} this week.`;
+      return `Link in bio. Start ${topic} this week — the offer expires Sunday.`;
     case "marketing":
-      return `Follow for more. DM "${topic}" for the playbook.`;
+      return `Comment "PLAYBOOK" and I'll send you the one-page version of this — free, no email.`;
     case "education":
     case "tutorial":
-      return `Save this. Run it next time you touch ${topic}.`;
+      return `Save this so you actually do it. Run the 3 steps next time you touch ${topic}.`;
     case "thought_leadership":
-      return `Share with one ${who} who needs this.`;
+      return `Send this to one ${who} who needs to hear it. That's the share.`;
     case "entertainment":
-      return `Follow if you want more like this.`;
+      return `Follow for one more like this every Tuesday.`;
     case "product_demo":
-      return `Link in bio — try it free.`;
+      return `Link in bio — free trial, two-click setup.`;
     default:
-      return `Follow for more on ${topic}.`;
+      return `Comment "${topic.split(" ")[0].toUpperCase()}" and I'll send you the next step.`;
   }
 }
 
@@ -1126,6 +1126,94 @@ export function validateVideoForgeOutput(
     if (!isNonEmptyString(out.captions.long_caption)) errors.push("captions.long_caption is empty.");
   }
 
+  // Speakability: spoken-text fields must contain dialogue, not stage
+  // directions. Flag sentences that begin with instructional verbs
+  // (Explain / Discuss / Show / Introduce + a few obvious siblings) and
+  // any bracketed stage directions left inline. We only scan the spoken
+  // surfaces — `voiceover_note`, `suggested_visual`, `b_roll_or_stock_query`,
+  // `scene_purpose`, and on-screen text are *meant* to be directions.
+  const spokenIssues = collectSpeakabilityIssues(out);
+  errors.push(...spokenIssues);
+
   return { ok: errors.length === 0, errors };
+}
+
+/**
+ * Returns a list of issues for any spoken-text field that reads like a
+ * stage direction instead of a line a creator could deliver on camera.
+ *
+ * Rules:
+ * - A sentence that **starts** with an instructional verb in imperative
+ *   form (Explain / Discuss / Show / Introduce / Demonstrate / Describe /
+ *   Outline / Highlight / Mention / Cover / Talk about) is flagged. We
+ *   match the start of a sentence so natural in-line uses ("I'll show
+ *   you what I mean.") are not penalized.
+ * - Bracketed stage directions inside narration ("[Cold open over B-roll]",
+ *   "[on-screen: …]") are flagged — they belong on visual fields.
+ */
+const INSTRUCTIONAL_VERBS = [
+  "explain",
+  "discuss",
+  "show",
+  "introduce",
+  "demonstrate",
+  "describe",
+  "outline",
+  "highlight",
+  "mention",
+  "cover",
+  "talk about",
+];
+
+const SENTENCE_START_RE = new RegExp(
+  // Start of string OR after sentence-ending punctuation + whitespace.
+  // Capture the leading word (or two for "talk about").
+  `(?:^|[.!?]\\s+)(${INSTRUCTIONAL_VERBS.map((v) => v.replace(" ", "\\s+")).join("|")})\\b`,
+  "i",
+);
+
+const STAGE_DIRECTION_RE = /\[[^\]]+\]/;
+
+function findInstructionalVerb(text: string): string | null {
+  const m = text.match(SENTENCE_START_RE);
+  return m ? m[1].toLowerCase().replace(/\s+/g, " ") : null;
+}
+
+function findStageDirection(text: string): string | null {
+  const m = text.match(STAGE_DIRECTION_RE);
+  return m ? m[0] : null;
+}
+
+function checkSpoken(label: string, text: string, errors: string[]): void {
+  if (!isNonEmptyString(text)) return;
+  const verb = findInstructionalVerb(text);
+  if (verb) {
+    errors.push(
+      `${label}: starts with instructional verb "${verb}" — rewrite as a line to say.`,
+    );
+  }
+  const stage = findStageDirection(text);
+  if (stage) {
+    errors.push(
+      `${label}: contains stage direction ${stage} — keep directions in scene visuals/voiceover, not narration.`,
+    );
+  }
+}
+
+function collectSpeakabilityIssues(out: VideoForgeOutput): string[] {
+  const errors: string[] = [];
+  checkSpoken("opening_hook", out.opening_hook, errors);
+  if (out.script_sections) {
+    for (const k of REQUIRED_SCRIPT_SECTIONS) {
+      checkSpoken(`script_sections.${k}`, out.script_sections[k] ?? "", errors);
+    }
+  }
+  if (Array.isArray(out.scene_breakdown)) {
+    out.scene_breakdown.forEach((scene, idx) => {
+      const label = `Scene ${scene?.scene_number ?? idx + 1} narration`;
+      checkSpoken(label, scene?.narration ?? "", errors);
+    });
+  }
+  return errors;
 }
 
