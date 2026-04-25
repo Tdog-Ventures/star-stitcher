@@ -66,6 +66,7 @@ export function StubEngine({
   fields,
   buildContent,
   buildTitle,
+  buildOutput,
   sample,
   assetType,
 }: StubEngineProps) {
