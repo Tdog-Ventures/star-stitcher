@@ -29,7 +29,6 @@ export function PublicNavbar() {
             <NavLink
               key={l.to}
               to={l.to}
-              end={l.end}
               className="rounded-md px-3 py-1.5 font-mono text-xs uppercase tracking-[0.16em] text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground"
               activeClassName="bg-muted/60 text-primary"
             >
