@@ -64,6 +64,12 @@ const Assets = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewAsset, setPreviewAsset] = useState<AssetRecord | null>(null);
+  const [previewContent, setPreviewContent] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+
   const load = async () => {
     if (!user) return;
     setLoading(true);
@@ -99,6 +105,27 @@ const Assets = () => {
     setNotes("");
     setErrors({});
     setOpen(true);
+  };
+
+  const openPreview = async (row: AssetRow) => {
+    const rec = rows.find((r) => r.id === row.id) ?? null;
+    if (!rec) return;
+    setPreviewAsset(rec);
+    setPreviewContent(null);
+    setPreviewError(null);
+    setPreviewOpen(true);
+    setPreviewLoading(true);
+    const { data, error } = await supabase
+      .from("assets")
+      .select("content")
+      .eq("id", rec.id)
+      .maybeSingle();
+    setPreviewLoading(false);
+    if (error) {
+      setPreviewError(error.message);
+      return;
+    }
+    setPreviewContent(data?.content ?? "");
   };
 
   const submit = async () => {
