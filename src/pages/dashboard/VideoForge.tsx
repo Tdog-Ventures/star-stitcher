@@ -203,6 +203,40 @@ const VideoForge = () => {
         </PreviewCard>
       }
     >
+      {validationIssues.length > 0 ? (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>
+            Save blocked — {validationIssues.length} issue
+            {validationIssues.length === 1 ? "" : "s"} to fix
+          </AlertTitle>
+          <AlertDescription>
+            <p className="mb-2 text-sm">
+              The video plan was generated but not saved. Fix the items below
+              (or tweak the form and regenerate) before this can be saved as an
+              asset.
+            </p>
+            <ul className="space-y-2">
+              {validationIssues.map((issue, i) => (
+                <li
+                  key={`${issue.path}-${i}`}
+                  className="rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs"
+                >
+                  <code className="block font-mono text-[11px] font-semibold text-foreground">
+                    {issue.path}
+                  </code>
+                  <p className="mt-1 text-foreground">{issue.reason}</p>
+                  <p className="mt-1 text-muted-foreground">
+                    <span className="font-medium text-foreground">Fix: </span>
+                    {issue.fix}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
       {savedAssetId ? (
         <div className="rounded-lg border border-primary/40 bg-primary/5 p-4">
           <p className="text-sm font-semibold text-foreground">
