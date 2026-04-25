@@ -8,15 +8,36 @@ import { deriveRenderUi } from "@/lib/render-state";
 
 describe("deriveRenderUi", () => {
   it("returns idle when no job and no url", () => {
-    expect(deriveRenderUi({ render_job_id: null, rendered_video_url: null })).toBe("idle");
+    expect(
+      deriveRenderUi({ render_job_id: null, rendered_video_url: null, render_status: null }),
+    ).toBe("idle");
   });
   it("returns rendering when job is set but no url", () => {
-    expect(deriveRenderUi({ render_job_id: "stub_abc", rendered_video_url: null })).toBe("rendering");
+    expect(
+      deriveRenderUi({
+        render_job_id: "job_abc",
+        rendered_video_url: null,
+        render_status: "queued",
+      }),
+    ).toBe("rendering");
   });
   it("returns complete when url is present (even if job is also set)", () => {
     expect(
-      deriveRenderUi({ render_job_id: "stub_abc", rendered_video_url: "https://x.mp4" }),
+      deriveRenderUi({
+        render_job_id: "job_abc",
+        rendered_video_url: "https://x.mp4",
+        render_status: "completed",
+      }),
     ).toBe("complete");
+  });
+  it("returns failed when render_status is failed and no url", () => {
+    expect(
+      deriveRenderUi({
+        render_job_id: "job_abc",
+        rendered_video_url: null,
+        render_status: "failed",
+      }),
+    ).toBe("failed");
   });
 });
 
