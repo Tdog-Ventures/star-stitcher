@@ -213,36 +213,39 @@ function buildHook(input: VideoForgeInput, mode: VideoMode): string {
   const who = input.target_audience || "you";
   const topic = input.topic || "this";
 
+  // Hooks must create tension, contradiction, or stakes — never summarize.
+  // Avoid safe phrasing ("here's how", "the 30-second version", "what most
+  // people get wrong"). Use second-person, callouts, pattern interrupts.
   if (mode === "short_form") {
     switch (input.tone) {
       case "controversial":
-        return `Everything ${who} get told about ${topic} is built on one wrong assumption. Here it is — in 30 seconds.`;
+        return `If you're ${who}, everything you've been told about ${topic} is wrong — and it's costing you customers every week you keep doing it.`;
       case "bold":
-        return `${who}: ${topic} isn't broken. You're running half the loop. Watch what fixes it in 30 seconds.`;
+        return `You're not bad at ${topic}. You're running it backwards. 30 seconds — see for yourself.`;
       case "storytelling":
-        return `I did ${topic} the way ${who} are told to. It bombed. Here's the version that actually worked.`;
+        return `I lost six months to ${topic} doing exactly what ${who} are told to do. One change later it worked. You'll spot it by second 20.`;
       case "casual":
-        return `Nobody tells ${who} this about ${topic} — and it's the only part that matters. Quick one.`;
+        return `Quick one for ${who}: the part of ${topic} that actually moves the needle is the part nobody is teaching you.`;
       case "cinematic":
-        return `${topic}. One move. Most ${who} never make it. The next 30 seconds show why.`;
+        return `One move in ${topic} separates ${who} who win from ${who} who quit. Most never see it. You're about to.`;
       case "educational":
-        return `Thirty seconds from now, ${who} will see ${topic} the way the top 10% do. Press play.`;
+        return `${who}: 90% of what you're doing for ${topic} doesn't matter. The 10% that does is in this clip.`;
       case "professional":
       default:
-        return `${who}: here's the 30-second version of ${topic} that actually moves the needle.`;
+        return `If ${topic} isn't working for ${who} yet, it's not effort — it's order of operations. Watch the next 30 seconds before you ship another one.`;
     }
   }
 
   if (mode === "long_form") {
-    return `Most ${who} approach ${topic} the wrong way — and it costs them six months. In the next few minutes I'll show you the one reframe that fixes it, the proof it works, and the 3-step plan you can run this week. The third step is the one nobody talks about.`;
+    return `${who}: if ${topic} hasn't moved for you in 90 days, the problem isn't the tactic — it's the loop you don't know you're running. In the next few minutes you'll see the loop, the proof it works, and the 3-step plan you can run this week. The third step is the one that breaks every founder who skips it.`;
   }
 
   if (mode === "faceless") {
-    return `${topic}. Most ${who} get the first move wrong. Flip one thing — and the whole loop changes.`;
+    return `${topic}. You're doing the right things in the wrong order — and the loop you're missing is the one nobody draws on a whiteboard.`;
   }
 
   // product_demo
-  return `Sixty seconds. ${topic}, live, in the product. By the end you'll know if it's right for you.`;
+  return `${who} burn 30 minutes a day on ${topic}. Watch what 30 seconds inside the product looks like — then decide.`;
 }
 
 // ---------- script sections ----------
@@ -254,44 +257,44 @@ function buildScriptSections(input: VideoForgeInput, mode: VideoMode): ScriptSec
 
   if (mode === "long_form") {
     return {
-      intro: `Welcome back. Today we're going deep on ${topic}, specifically for ${who} who want to ${outcome}. I'll cover what most people miss, the one reframe that changes the game, and a 3-step plan you can run this week.`,
-      problem: `Here's where almost every ${who} gets stuck on ${topic}: they treat it as a tactic, not a system. So they try one thing, it doesn't work in two weeks, and they bail. Sound familiar?`,
-      insight: `The reframe is this: ${topic} isn't a single move — it's a feedback loop. Once you see it as a loop, every "tactic" becomes one knob you can turn. Let me show you what I mean.`,
-      proof: `Here's the receipts. Last quarter I ran this exact loop with three ${who}. Specifics on screen — note the pattern in week 2 vs week 6. This isn't theory; the curve looks the same every time.`,
-      solution: `Here's the 3-step plan. Step one: define one input you can measure weekly. Step two: ship one experiment per week against that input. Step three: review, kill, double down — every Friday, no exceptions. That's the whole loop.`,
+      intro: `If you're ${who} and ${topic} hasn't moved for you in 90 days, this is the video. You'll get the reframe, the receipts, and a 3-step plan you can run this week — no fluff, no filler.`,
+      problem: `Here's where you're stuck. You're treating ${topic} as a tactic — try one thing, wait two weeks, bail when nothing happens. That loop is the problem, not the tactic.`,
+      insight: `${topic} isn't a single move. It's a feedback loop. Once you see it as a loop, every "tactic" becomes one knob you can turn — and you stop guessing.`,
+      proof: `Three ${who}, same loop, last quarter. Look at week 2 vs week 6 on the chart. Same pattern every time. This isn't theory; it's repeatable.`,
+      solution: `Three steps, run weekly. One: pick the single input you'll measure. Two: ship one experiment against it this week. Three: every Friday, kill what didn't move the input and double what did. That's the loop.`,
       cta: buildCta(input, mode),
     };
   }
 
   if (mode === "faceless") {
     return {
-      intro: `If you're ${who}, ${topic} feels harder than it should. There's a reason. And there's a fix.`,
-      problem: `Most ${who} fix the wrong layer first. They tweak the surface. The break is one level down.`,
-      insight: `${topic} isn't one move. It's a loop. Each piece feeds the next — that's why the wins compound.`,
-      proof: `Same effort. New framing. The numbers move every time. Watch the curve, not the day-one spike.`,
-      solution: `Three steps to ${outcome}. One: name the loop. Two: ship one experiment this week. Three: review on Friday.`,
+      intro: `If you're ${who}, ${topic} feels harder than it should. It's not your effort. It's the order you're running it in.`,
+      problem: `You're fixing the wrong layer. The break isn't on the surface — it's one level down, where you're not looking.`,
+      insight: `${topic} isn't one move. It's a loop. Each piece feeds the next — that's why your wins compound when you finally run it in order.`,
+      proof: `Same effort. New order. The numbers move every time. Watch the curve — not the day-one spike.`,
+      solution: `Three steps to ${outcome}. One: name the loop. Two: ship one experiment this week. Three: review on Friday. Skip step three and you're back to square one in a month.`,
       cta: buildCta(input, mode),
     };
   }
 
   if (mode === "product_demo") {
     return {
-      intro: `Quick demo. ${topic}, end-to-end, in under two minutes. No slides. No setup. Just the product.`,
-      problem: `Most ${who} burn thirty minutes a day on this exact screen. Watch.`,
-      insight: `One click in our flow, and that thirty minutes is thirty seconds. We built around the job, not the tool.`,
+      intro: `Quick one. ${topic}, end-to-end, inside the product — in under two minutes. No slides, no setup, no marketing voice.`,
+      problem: `Right now, you're losing 30 minutes a day to this exact screen. Here's what that looks like.`,
+      insight: `One click in our flow turns those 30 minutes into 30 seconds. We built around the job you're doing — not the tool you've been using.`,
       proof: `Real example. Live. No edits. Empty state to finished result, right now.`,
-      solution: `Day one looks like this. Connect once. Configure once. Then ship. That's the whole loop.`,
+      solution: `Day one looks like this. Connect once. Configure once. Then ship — every time, in seconds. That's the whole loop.`,
       cta: buildCta(input, mode),
     };
   }
 
   // short_form
   return {
-    intro: `If you're ${who} and you want to ${outcome}, this is the 30 seconds that matters.`,
-    problem: `${who} keep grinding ${topic} and getting nothing back. Same effort. Same dead end. Every week.`,
-    insight: `${topic} isn't a tactic. It's a loop. Most people only run half of it — that's why it stalls.`,
-    proof: `One number tells the story. Same person, same product, twice the result — the only thing that changed was the loop.`,
-    solution: `Do three things. Pick one input. Ship one experiment a week. Review every Friday. That's it.`,
+    intro: `If you're ${who} and you want to ${outcome}, the next 30 seconds matter more than the last 30 days you spent on ${topic}.`,
+    problem: `You keep grinding ${topic} and getting nothing back. Same effort, same dead end, every week. That's not a tactic problem.`,
+    insight: `${topic} isn't a tactic. It's a loop. You're running half of it — that's why it stalls on you.`,
+    proof: `One number tells the story. Same person, same product, twice the result. The only thing that changed was the order.`,
+    solution: `Three things. Pick one input. Ship one experiment a week. Review every Friday. Skip Friday and you're back where you started.`,
     cta: buildCta(input, mode),
   };
 }
@@ -300,38 +303,41 @@ function buildCta(input: VideoForgeInput, mode: VideoMode): string {
   const topic = input.topic || "this";
   const who = input.target_audience || "founders";
 
+  // CTAs must be immediate. Each one names the action, the mechanism the
+  // viewer uses to take it, and a reason to do it now (urgency trigger).
+
   if (mode === "long_form") {
     if (input.video_goal === "sales" || input.video_goal === "product_demo") {
-      return `If this is the loop you want to run, the link in the description gets you started in two minutes. Subscribe so you don't miss the week-2 numbers — that's where it gets interesting.`;
+      return `Click the link in the description and start the loop today — first 50 each month get the onboarding call free. Subscribe so you catch the week-2 numbers; that's where it gets real.`;
     }
-    return `If this changed how you think about ${topic}, hit subscribe — the next video breaks down the week-2 review. And drop one word below: which step are you running first?`;
+    return `Run step one before you close this tab — pick the single input metric for ${topic} and write it down. Then comment that input below; I read every one for the first 24 hours.`;
   }
 
   if (mode === "faceless") {
-    return `Save this. Run the loop once this week. Comment "LOOP" and I'll send you the one-page template.`;
+    return `Save this clip now so you actually run the loop this week. Comment "LOOP" in the next 24h and I'll DM you the one-page template — after that it goes behind the email wall.`;
   }
 
   if (mode === "product_demo") {
-    return `Start free with the link below — no card, no email wall. Want a 5-minute walkthrough live? DM "DEMO" and we'll book it.`;
+    return `Click the link below and start free in two clicks — no card, no email wall. Want a live 5-minute walkthrough? DM "DEMO" today and we'll book it this week.`;
   }
 
-  // short_form: tighter CTAs
+  // short_form: tighter CTAs — action + mechanism + urgency.
   switch (input.video_goal) {
     case "sales":
-      return `Link in bio. Start ${topic} this week — the offer expires Sunday.`;
+      return `Tap the link in bio and start ${topic} this week — the offer closes Sunday at midnight, no extensions.`;
     case "marketing":
-      return `Comment "PLAYBOOK" and I'll send you the one-page version of this — free, no email.`;
+      return `Comment "PLAYBOOK" in the next 24h and I'll DM you the one-pager — free, no email, then it's gone.`;
     case "education":
     case "tutorial":
-      return `Save this so you actually do it. Run the 3 steps next time you touch ${topic}.`;
+      return `Hit save before you scroll, then run the 3 steps the next time you touch ${topic} — today if you can.`;
     case "thought_leadership":
-      return `Send this to one ${who} who needs to hear it. That's the share.`;
+      return `Send this to one ${who} who needs it today — that's the share. The ones who watch alone don't change anything.`;
     case "entertainment":
-      return `Follow for one more like this every Tuesday.`;
+      return `Follow now — next one drops Tuesday and you'll miss it if you don't.`;
     case "product_demo":
-      return `Link in bio — free trial, two-click setup.`;
+      return `Tap the link in bio and start free — two-click setup, live before your next coffee.`;
     default:
-      return `Comment "${topic.split(" ")[0].toUpperCase()}" and I'll send you the next step.`;
+      return `Comment "${topic.split(" ")[0].toUpperCase()}" in the next hour and I'll DM you the next step before this video stops trending.`;
   }
 }
 
@@ -831,31 +837,31 @@ function buildTitle(input: VideoForgeInput, mode: VideoMode): string {
   if (mode === "long_form") {
     switch (input.video_goal) {
       case "sales":
-        return `${topic}: the full breakdown (and why most ${input.target_audience || "people"} get it wrong)`;
+        return `${topic}: the full breakdown — and why ${input.target_audience || "most people"} keep losing on it`;
       case "education":
       case "tutorial":
-        return `${topic}, explained — the system, the proof, and the 3-step plan`;
+        return `${topic}, end to end — the system, the proof, and the 3-step plan`;
       case "thought_leadership":
-        return `Why ${topic} is about to change — and what to do about it`;
+        return `${topic} is about to change. If you're not ready, this video is for you.`;
       case "product_demo":
-        return `${topic} — full live walkthrough`;
+        return `${topic} — full live walkthrough, no slides`;
       default:
-        return `${topic}: what most people get wrong (and the loop that fixes it)`;
+        return `${topic}: the loop you've been missing (and why it costs you 6 months)`;
     }
   }
-  if (mode === "faceless") return `${topic} — the 3-step loop (no talking head)`;
+  if (mode === "faceless") return `${topic} — the 3-step loop nobody draws for you`;
   if (mode === "product_demo") return `${topic} in 60 seconds — live demo, no slides`;
   // short_form
   switch (input.video_goal) {
     case "sales":
-      return `${topic} — the offer in 30s`;
+      return `${topic} — the offer in 30s (closes Sunday)`;
     case "education":
     case "tutorial":
-      return `${topic}, in 30 seconds`;
+      return `${topic}, in 30 seconds — save this`;
     case "marketing":
-      return `${topic}: what most people get wrong`;
+      return `${topic}: you're running it backwards`;
     case "thought_leadership":
-      return `Why ${topic} is about to change`;
+      return `${topic} is about to change — are you ready?`;
     case "entertainment":
       return `${topic} — you weren't ready`;
     default:
