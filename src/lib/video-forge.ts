@@ -1016,8 +1016,23 @@ export function formatVideoForge(input: VideoForgeInput, out: VideoForgeOutput):
 // and that every scene carries the production fields a creator needs to
 // actually film. Returns a list of human-readable errors; empty list = ok.
 
+/**
+ * One structured validation problem. `path` is a JSON-pointer-ish field
+ * locator (e.g. `scene_breakdown[2].narration`), `reason` is a short
+ * human-readable explanation, `fix` is a one-line suggestion the UI can
+ * surface verbatim.
+ */
+export interface VideoForgeValidationIssue {
+  path: string;
+  reason: string;
+  fix: string;
+}
+
 export interface VideoForgeValidationResult {
   ok: boolean;
+  /** Structured issues — preferred for UI rendering. */
+  issues: VideoForgeValidationIssue[];
+  /** Flat human-readable strings, kept for backwards compatibility. */
   errors: string[];
 }
 
