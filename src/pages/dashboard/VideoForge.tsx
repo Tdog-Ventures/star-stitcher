@@ -46,6 +46,7 @@ const EMPTY: VideoForgeInput = {
   tone: "professional",
   target_length: "medium",
   desired_outcome: "",
+  mode: "short_form",
 };
 
 const SAMPLE: VideoForgeInput = {
@@ -57,6 +58,7 @@ const SAMPLE: VideoForgeInput = {
   tone: "bold",
   target_length: "short",
   desired_outcome: "Send one email today that gets a reply",
+  mode: "short_form",
 };
 
 const VideoForge = () => {
