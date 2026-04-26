@@ -81,6 +81,35 @@ function mapScene(s: SceneIn, idx: number) {
   };
 }
 
+function facelessForgeUrl(rawBaseUrl: string, endpoint: string): string | null {
+  const stripped = rawBaseUrl
+    .trim()
+    .replace(/^FACELESSFORGE_BASE_URL\s*=\s*/, "")
+    .replace(/^['"]|['"]$/g, "")
+    .trim();
+  try {
+    const url = new URL(stripped);
+    let path = url.pathname.replace(/\/$/, "");
+    for (const suffix of [
+      "/api/external/render-video/cancel",
+      "/api/external/render-video-status",
+      "/api/external/render-video",
+      "/api/external",
+    ]) {
+      if (path.endsWith(suffix)) {
+        path = path.slice(0, -suffix.length);
+        break;
+      }
+    }
+    url.pathname = path || "/";
+    url.search = "";
+    url.hash = "";
+    return `${url.toString().replace(/\/$/, "")}${endpoint}`;
+  } catch {
+    return null;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") {
@@ -154,6 +183,13 @@ Deno.serve(async (req) => {
       { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
+  const renderUrl = facelessForgeUrl(baseUrl, "/api/external/render-video");
+  if (!renderUrl) {
+    return new Response(
+      JSON.stringify({ error: "FacelessForge base URL is invalid" }),
+      { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
 
   const upstreamPayload = {
     source: "ethinx_videoforge",
@@ -170,7 +206,7 @@ Deno.serve(async (req) => {
   let upstreamStatus = "queued";
   try {
     const upstream = await fetch(
-      `${baseUrl.replace(/\/$/, "")}/api/external/render-video`,
+      renderUrl,
       {
         method: "POST",
         headers: {
