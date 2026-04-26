@@ -26,6 +26,35 @@ function normaliseStatus(raw: unknown): "queued" | "running" | "completed" | "fa
   return "queued";
 }
 
+function facelessForgeUrl(rawBaseUrl: string, endpoint: string): string | null {
+  const stripped = rawBaseUrl
+    .trim()
+    .replace(/^FACELESSFORGE_BASE_URL\s*=\s*/, "")
+    .replace(/^['"]|['"]$/g, "")
+    .trim();
+  try {
+    const url = new URL(stripped);
+    let path = url.pathname.replace(/\/$/, "");
+    for (const suffix of [
+      "/api/external/render-video/cancel",
+      "/api/external/render-video-status",
+      "/api/external/render-video",
+      "/api/external",
+    ]) {
+      if (path.endsWith(suffix)) {
+        path = path.slice(0, -suffix.length);
+        break;
+      }
+    }
+    url.pathname = path || "/";
+    url.search = "";
+    url.hash = "";
+    return `${url.toString().replace(/\/$/, "")}${endpoint}`;
+  } catch {
+    return null;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") {
@@ -111,13 +140,20 @@ Deno.serve(async (req) => {
       { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
+  const cancelUrl = facelessForgeUrl(baseUrl, "/api/external/render-video/cancel");
+  if (!cancelUrl) {
+    return new Response(
+      JSON.stringify({ error: "FacelessForge base URL is invalid" }),
+      { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
 
   let upstreamStatus: "queued" | "running" | "completed" | "failed" | "cancelled" = "cancelled";
   let alreadyTerminal = false;
   let videoUrl: string | null = null;
   try {
     const upstream = await fetch(
-      `${baseUrl.replace(/\/$/, "")}/api/external/render-video/cancel`,
+      cancelUrl,
       {
         method: "POST",
         headers: {
