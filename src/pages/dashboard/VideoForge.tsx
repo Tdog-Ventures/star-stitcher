@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { AlertTriangle, ArrowRight, Save, Send, Sparkles, Wand2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ import {
   MODE_LABELS,
   PLATFORM_LABELS,
   TONE_LABELS,
+  buildRenderPayload,
   formatVideoForge,
   generateVideoForge,
   validateVideoForgeOutput,
@@ -72,6 +73,7 @@ const SAMPLE: VideoForgeInput = {
 const VideoForge = () => {
   const { toast } = useToast();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [fields, setFields] = useState<VideoForgeInput>(EMPTY);
   const [output, setOutput] = useState<VideoForgeOutput | null>(null);
   const [saving, setSaving] = useState(false);
