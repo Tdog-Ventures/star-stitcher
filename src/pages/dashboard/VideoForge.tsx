@@ -77,6 +77,9 @@ const VideoForge = () => {
   const [saving, setSaving] = useState(false);
   const [savedAssetId, setSavedAssetId] = useState<string | null>(null);
   const [validationIssues, setValidationIssues] = useState<VideoForgeValidationIssue[]>([]);
+  const [history, setHistory] = useState<VideoForgeHistoryEntry[]>([]);
+  const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
+  const [selectedVariant, setSelectedVariant] = useState<ForgeVariant>("deterministic");
 
   const set = <K extends keyof VideoForgeInput>(key: K, value: VideoForgeInput[K]) =>
     setFields((prev) => ({ ...prev, [key]: value }));
