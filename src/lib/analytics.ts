@@ -5,7 +5,8 @@ export type AnalyticsEvent =
   | "asset_created"
   | "distribution_task_created"
   | "distribution_task_ready"
-  | "video_forge_generated";
+  | "video_forge_generated"
+  | "video_forge_auto_render_queued";
 
 export async function trackEvent(
   event: AnalyticsEvent,

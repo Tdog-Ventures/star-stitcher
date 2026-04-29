@@ -1343,3 +1343,43 @@ function collectSpeakabilityIssues(
   }
 }
 
+
+// ---------- render payload helper ----------
+
+/**
+ * Shape of the body sent to the `render-video` edge function.
+ * Kept narrow on purpose so both Video Forge auto-render and the manual
+ * Generated Videos render button stay in sync.
+ */
+export interface RenderVideoPayload {
+  asset_id: string;
+  title: string;
+  script: string;
+  scene_breakdown: unknown[];
+  stock_footage_terms: unknown[];
+  captions: { short_caption: string; long_caption: string };
+  voiceover_notes: unknown;
+}
+
+/**
+ * Build the render-video request body from a Video Forge output + asset id.
+ * Single source of truth — used by the manual render button on /videos and
+ * the auto-render fired right after Generate on the Video Forge page.
+ */
+export function buildRenderPayload(
+  assetId: string,
+  output: VideoForgeOutput,
+): RenderVideoPayload {
+  return {
+    asset_id: assetId,
+    title: output.video_title,
+    script: output.full_script,
+    scene_breakdown: Array.isArray(output.scene_breakdown) ? output.scene_breakdown : [],
+    stock_footage_terms: Array.isArray(output.stock_footage_terms) ? output.stock_footage_terms : [],
+    captions: {
+      short_caption: output.captions?.short_caption ?? "",
+      long_caption: output.captions?.long_caption ?? "",
+    },
+    voiceover_notes: output.voiceover_notes ?? null,
+  };
+}
