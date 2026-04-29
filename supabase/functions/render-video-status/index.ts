@@ -215,6 +215,7 @@ Deno.serve(async (req) => {
         status,
         video_url: videoUrl,
         rendered_video_url: videoUrl,
+        progress,
         error: errorMessage,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
