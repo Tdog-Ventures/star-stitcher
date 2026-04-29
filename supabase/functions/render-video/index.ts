@@ -262,7 +262,7 @@ Deno.serve(async (req) => {
 
   const { error: updateErr } = await supabase
     .from("assets")
-    .update({ render_job_id: jobId, render_status: "queued" })
+    .update({ render_job_id: jobId, render_status: "queued", render_engine: input.engine })
     .eq("id", input.asset_id);
 
   if (updateErr) {
