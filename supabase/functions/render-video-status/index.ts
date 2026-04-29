@@ -181,6 +181,17 @@ Deno.serve(async (req) => {
       ? data.message
       : null;
 
+    // Normalise progress to a 0-100 integer when upstream provides it.
+    // FacelessForge may return `progress` (0-1 or 0-100) or `percent`.
+    let progress: number | null = null;
+    const rawProgress = (data.progress ?? data.percent ?? data.progress_percent) as unknown;
+    if (typeof rawProgress === "number" && Number.isFinite(rawProgress)) {
+      const v = rawProgress <= 1 ? rawProgress * 100 : rawProgress;
+      progress = Math.max(0, Math.min(100, Math.round(v)));
+    }
+    if (status === "completed") progress = 100;
+    if (status === "queued" && progress === null) progress = 0;
+
     if (status === "completed" && videoUrl) {
       await supabase
         .from("assets")
