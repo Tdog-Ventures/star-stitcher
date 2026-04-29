@@ -210,42 +210,40 @@ function timecode(seconds: number): string {
 // ---------- hooks (mode + tone aware) ----------
 
 function buildHook(input: VideoForgeInput, mode: VideoMode): string {
-  const who = input.target_audience || "you";
   const topic = input.topic || "this";
 
-  // Hooks must create tension, contradiction, or stakes — never summarize.
-  // Avoid safe phrasing ("here's how", "the 30-second version", "what most
-  // people get wrong"). Use second-person, callouts, pattern interrupts.
+  // Hooks create tension or stakes around the topic — they never name the
+  // audience verbatim (that gets handled in metadata + B-roll, not narration).
   if (mode === "short_form") {
     switch (input.tone) {
       case "controversial":
-        return `If you're ${who}, everything you've been told about ${topic} is wrong — and it's costing you customers every week you keep doing it.`;
+        return `Everything you've been told about ${topic} is wrong — and it's costing you every week you keep doing it.`;
       case "bold":
         return `You're not bad at ${topic}. You're running it backwards. 30 seconds — see for yourself.`;
       case "storytelling":
-        return `I lost six months to ${topic} doing exactly what ${who} are told to do. One change later it worked. You'll spot it by second 20.`;
+        return `I lost six months to ${topic} doing the "right" thing. One change later it worked. You'll spot it by second 20.`;
       case "casual":
-        return `Quick one for ${who}: the part of ${topic} that actually moves the needle is the part nobody is teaching you.`;
+        return `Quick one: the part of ${topic} that actually moves the needle is the part nobody is teaching.`;
       case "cinematic":
-        return `One move in ${topic} separates ${who} who win from ${who} who quit. Most never see it. You're about to.`;
+        return `One move in ${topic} separates the people who win from the people who quit. Most never see it. You're about to.`;
       case "educational":
-        return `${who}: 90% of what you're doing for ${topic} doesn't matter. The 10% that does is in this clip.`;
+        return `90% of what you've heard about ${topic} doesn't matter. The 10% that does is in this clip.`;
       case "professional":
       default:
-        return `If ${topic} isn't working for ${who} yet, it's not effort — it's order of operations. Watch the next 30 seconds before you ship another one.`;
+        return `If ${topic} isn't clicking yet, it isn't effort — it's order of operations. Watch the next 30 seconds before you try again.`;
     }
   }
 
   if (mode === "long_form") {
-    return `${who}: if ${topic} hasn't moved for you in 90 days, the problem isn't the tactic — it's the loop you don't know you're running. In the next few minutes you'll see the loop, the proof it works, and the 3-step plan you can run this week. The third step is the one that breaks every founder who skips it.`;
+    return `If ${topic} hasn't moved for you in 90 days, the problem isn't the tactic — it's the loop you don't know you're running. In the next few minutes you'll see the loop, the proof it works, and the 3-step plan you can run this week. The third step is the one most people skip.`;
   }
 
   if (mode === "faceless") {
-    return `${topic}. You're doing the right things in the wrong order — and the loop you're missing is the one nobody draws on a whiteboard.`;
+    return `${topic}. The right things in the wrong order — and the loop nobody draws on a whiteboard.`;
   }
 
   // product_demo
-  return `${who} burn 30 minutes a day on ${topic}. Watch what 30 seconds inside the product looks like — then decide.`;
+  return `30 minutes a day disappear into ${topic}. Watch what 30 seconds inside the product looks like — then decide.`;
 }
 
 // ---------- script sections ----------
