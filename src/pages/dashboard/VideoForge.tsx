@@ -19,6 +19,11 @@ import { useAuth } from "@/providers/AuthProvider";
 import { trackEvent } from "@/lib/analytics";
 import { EngineLayout, FormSection, PreviewCard } from "@/components/engine";
 import {
+  VideoForgeHistory,
+  type ForgeVariant,
+  type VideoForgeHistoryEntry,
+} from "@/components/engine/VideoForgeHistory";
+import {
   FORMAT_LABELS,
   GOAL_LABELS,
   LENGTH_LABELS,
