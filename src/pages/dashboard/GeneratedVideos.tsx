@@ -657,6 +657,15 @@ const GeneratedVideos = () => {
                         {badge.label}
                       </Badge>
                       <StatusBadge status={badge.status} className="text-[10px]" />
+                      {rec.render_engine ? (
+                        <Badge
+                          variant="outline"
+                          className="border-primary/40 bg-primary/10 text-[10px] text-primary"
+                          data-testid="engine-chip"
+                        >
+                          {RENDER_ENGINE_LABEL[rec.render_engine as RenderEngine] ?? rec.render_engine}
+                        </Badge>
+                      ) : null}
                     </div>
                     <dl className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                       {modeLabel ? (
