@@ -19,6 +19,11 @@ import { useAuth } from "@/providers/AuthProvider";
 import { trackEvent } from "@/lib/analytics";
 import { EngineLayout, FormSection, PreviewCard } from "@/components/engine";
 import {
+  VideoForgeHistory,
+  type ForgeVariant,
+  type VideoForgeHistoryEntry,
+} from "@/components/engine/VideoForgeHistory";
+import {
   FORMAT_LABELS,
   GOAL_LABELS,
   LENGTH_LABELS,
@@ -72,6 +77,9 @@ const VideoForge = () => {
   const [saving, setSaving] = useState(false);
   const [savedAssetId, setSavedAssetId] = useState<string | null>(null);
   const [validationIssues, setValidationIssues] = useState<VideoForgeValidationIssue[]>([]);
+  const [history, setHistory] = useState<VideoForgeHistoryEntry[]>([]);
+  const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
+  const [selectedVariant, setSelectedVariant] = useState<ForgeVariant>("deterministic");
 
   const set = <K extends keyof VideoForgeInput>(key: K, value: VideoForgeInput[K]) =>
     setFields((prev) => ({ ...prev, [key]: value }));
@@ -86,6 +94,13 @@ const VideoForge = () => {
 
     const draft = generateVideoForge(fields);
     setOutput(draft);
+
+    const entryId =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `h_${Date.now()}`;
+    let polished: VideoForgeOutput | null = null;
+    let polishError: string | null = null;
 
     // Polish pass: rewrite narration via DeepSeek so each scene is genuinely
     // about the topic. Falls back to the deterministic draft on any failure
@@ -107,11 +122,31 @@ const VideoForge = () => {
       ])) as { data: VideoForgeOutput | null; error: unknown };
       if (!error && data && Array.isArray((data as VideoForgeOutput).scene_breakdown)) {
         result = data as VideoForgeOutput;
+        polished = result;
         setOutput(result);
+      } else if (error) {
+        polishError = error instanceof Error ? error.message : String(error);
       }
     } catch (e) {
+      polishError = e instanceof Error ? e.message : String(e);
       console.warn("[video-forge] polish skipped", e);
     }
+
+    const activeVariant: ForgeVariant = polished ? "polished" : "deterministic";
+    setHistory((prev) => [
+      ...prev,
+      {
+        id: entryId,
+        createdAt: Date.now(),
+        topic: fields.topic,
+        draft,
+        polished,
+        polishError,
+        activeVariant,
+      },
+    ]);
+    setSelectedHistoryId(entryId);
+    setSelectedVariant(activeVariant);
 
     // Pre-save validation: every required output field must be present and
     // non-empty, and every scene must carry the production fields.
@@ -183,6 +218,31 @@ const VideoForge = () => {
     setOutput(null);
     setSavedAssetId(null);
     setValidationIssues([]);
+    setSelectedHistoryId(null);
+  };
+
+  const handleSelectHistory = (id: string, variant: ForgeVariant) => {
+    const entry = history.find((h) => h.id === id);
+    if (!entry) return;
+    const next = variant === "polished" ? entry.polished ?? entry.draft : entry.draft;
+    setOutput(next);
+    setSelectedHistoryId(id);
+    setSelectedVariant(variant);
+    setValidationIssues([]);
+    setSavedAssetId(null);
+  };
+
+  const handleRevertHistory = (id: string, variant: ForgeVariant) => {
+    handleSelectHistory(id, variant);
+    toast({
+      title: `Reverted to ${variant} version`,
+      description: "Editing this version. Generate again to capture a new entry.",
+    });
+  };
+
+  const handleClearHistory = () => {
+    setHistory([]);
+    setSelectedHistoryId(null);
   };
 
   return (
@@ -202,31 +262,41 @@ const VideoForge = () => {
         </>
       }
       aside={
-        <PreviewCard
-          title={output?.video_title || fields.topic || "Untitled video"}
-          status={savedAssetId ? "ready" : "draft"}
-          meta={`${GOAL_LABELS[fields.video_goal]} · ${PLATFORM_LABELS[fields.platform]} · ${LENGTH_LABELS[fields.target_length]}`}
-        >
-          {output ? (
-            <>
-              <p>
-                <span className="font-medium text-foreground">Hook:</span>{" "}
-                {output.opening_hook}
-              </p>
-              <p>
-                <span className="font-medium text-foreground">Promise:</span>{" "}
-                {output.viewer_promise}
-              </p>
+        <div className="space-y-4">
+          <PreviewCard
+            title={output?.video_title || fields.topic || "Untitled video"}
+            status={savedAssetId ? "ready" : "draft"}
+            meta={`${GOAL_LABELS[fields.video_goal]} · ${PLATFORM_LABELS[fields.platform]} · ${LENGTH_LABELS[fields.target_length]}`}
+          >
+            {output ? (
+              <>
+                <p>
+                  <span className="font-medium text-foreground">Hook:</span>{" "}
+                  {output.opening_hook}
+                </p>
+                <p>
+                  <span className="font-medium text-foreground">Promise:</span>{" "}
+                  {output.viewer_promise}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {output.scene_breakdown.length} scenes · {output.hashtags.slice(0, 4).join(" ")}
+                </p>
+              </>
+            ) : (
               <p className="text-xs text-muted-foreground">
-                {output.scene_breakdown.length} scenes · {output.hashtags.slice(0, 4).join(" ")}
+                Fill in a topic and click Generate. The full video plan appears here and is saved as an asset.
               </p>
-            </>
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              Fill in a topic and click Generate. The full video plan appears here and is saved as an asset.
-            </p>
-          )}
-        </PreviewCard>
+            )}
+          </PreviewCard>
+          <VideoForgeHistory
+            entries={history}
+            selectedId={selectedHistoryId}
+            selectedVariant={selectedVariant}
+            onSelect={handleSelectHistory}
+            onRevert={handleRevertHistory}
+            onClear={handleClearHistory}
+          />
+        </div>
       }
     >
       {validationIssues.length > 0 ? (
