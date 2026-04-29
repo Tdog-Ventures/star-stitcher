@@ -298,7 +298,7 @@ function buildScriptSections(input: VideoForgeInput, mode: VideoMode): ScriptSec
 
 function buildCta(input: VideoForgeInput, mode: VideoMode): string {
   const topic = input.topic || "this";
-  const who = input.target_audience || "founders";
+  
 
   // CTAs must be immediate. Each one names the action, the mechanism the
   // viewer uses to take it, and a reason to do it now (urgency trigger).
