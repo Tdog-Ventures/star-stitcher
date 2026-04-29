@@ -415,7 +415,8 @@ const GeneratedVideos = () => {
       return;
     }
     // Title comes from the asset row (user-editable), so override after build.
-    const body = { ...buildRenderPayload(rec.id, output), title: rec.title, script: meta.fullScript };
+    const engine = engineByAsset[rec.id] ?? (rec.render_engine as RenderEngine | null) ?? "videoforge";
+    const body = { ...buildRenderPayload(rec.id, output, engine), title: rec.title, script: meta.fullScript };
 
     const { data, error } = await supabase.functions.invoke("render-video", {
       body,
