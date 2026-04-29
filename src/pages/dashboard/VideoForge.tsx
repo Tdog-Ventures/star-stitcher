@@ -209,7 +209,7 @@ const VideoForge = () => {
     // then send the user to /videos to watch progress. Manual-first principle
     // is preserved — the form was filled by hand; this just removes the extra
     // click between "I have a script" and "I have an MP4".
-    const renderBody = buildRenderPayload(asset.id, result);
+    const renderBody = buildRenderPayload(asset.id, result, renderEngine);
     const { data: renderData, error: renderError } = await supabase.functions.invoke(
       "render-video",
       { body: renderBody },
