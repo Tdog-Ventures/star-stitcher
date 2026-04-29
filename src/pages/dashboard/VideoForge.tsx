@@ -262,31 +262,41 @@ const VideoForge = () => {
         </>
       }
       aside={
-        <PreviewCard
-          title={output?.video_title || fields.topic || "Untitled video"}
-          status={savedAssetId ? "ready" : "draft"}
-          meta={`${GOAL_LABELS[fields.video_goal]} · ${PLATFORM_LABELS[fields.platform]} · ${LENGTH_LABELS[fields.target_length]}`}
-        >
-          {output ? (
-            <>
-              <p>
-                <span className="font-medium text-foreground">Hook:</span>{" "}
-                {output.opening_hook}
-              </p>
-              <p>
-                <span className="font-medium text-foreground">Promise:</span>{" "}
-                {output.viewer_promise}
-              </p>
+        <div className="space-y-4">
+          <PreviewCard
+            title={output?.video_title || fields.topic || "Untitled video"}
+            status={savedAssetId ? "ready" : "draft"}
+            meta={`${GOAL_LABELS[fields.video_goal]} · ${PLATFORM_LABELS[fields.platform]} · ${LENGTH_LABELS[fields.target_length]}`}
+          >
+            {output ? (
+              <>
+                <p>
+                  <span className="font-medium text-foreground">Hook:</span>{" "}
+                  {output.opening_hook}
+                </p>
+                <p>
+                  <span className="font-medium text-foreground">Promise:</span>{" "}
+                  {output.viewer_promise}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {output.scene_breakdown.length} scenes · {output.hashtags.slice(0, 4).join(" ")}
+                </p>
+              </>
+            ) : (
               <p className="text-xs text-muted-foreground">
-                {output.scene_breakdown.length} scenes · {output.hashtags.slice(0, 4).join(" ")}
+                Fill in a topic and click Generate. The full video plan appears here and is saved as an asset.
               </p>
-            </>
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              Fill in a topic and click Generate. The full video plan appears here and is saved as an asset.
-            </p>
-          )}
-        </PreviewCard>
+            )}
+          </PreviewCard>
+          <VideoForgeHistory
+            entries={history}
+            selectedId={selectedHistoryId}
+            selectedVariant={selectedVariant}
+            onSelect={handleSelectHistory}
+            onRevert={handleRevertHistory}
+            onClear={handleClearHistory}
+          />
+        </div>
       }
     >
       {validationIssues.length > 0 ? (
