@@ -32,6 +32,7 @@ interface SceneIn {
 interface DraftIn {
   opening_hook: string;
   viewer_promise: string;
+  full_script?: string;
   scene_breakdown: SceneIn[];
   script_sections: { cta: string; [k: string]: string };
   [k: string]: unknown;
