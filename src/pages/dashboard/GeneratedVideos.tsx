@@ -670,11 +670,33 @@ const GeneratedVideos = () => {
                         );
                       }
                       if (renderUi === "rendering") {
+                        const { value, reported } = getProgressForAsset(rec.id);
                         return (
-                          <p className="text-[11px] text-muted-foreground">
-                            <Loader2 className="mr-1 inline h-3 w-3 animate-spin" aria-hidden="true" />
-                            Rendering with FacelessForge — checking status every 5s.
-                          </p>
+                          <div className="space-y-1.5" data-testid="render-progress">
+                            <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                                Rendering with FacelessForge
+                                {rec.render_job_id ? (
+                                  <span className="text-muted-foreground/70">
+                                    {" "}· job {rec.render_job_id.slice(0, 10)}
+                                  </span>
+                                ) : null}
+                              </span>
+                              <span
+                                className="tabular-nums font-medium text-foreground"
+                                data-testid="render-progress-value"
+                              >
+                                {value}%{reported ? "" : " (est.)"}
+                              </span>
+                            </div>
+                            <Progress value={value} className="h-1.5" />
+                            <p className="text-[10px] text-muted-foreground/80">
+                              {reported
+                                ? "Live progress reported by FacelessForge."
+                                : "Waiting for live updates — showing an estimate based on elapsed time."}
+                            </p>
+                          </div>
                         );
                       }
                       if (renderUi === "failed") {
