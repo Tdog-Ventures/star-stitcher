@@ -54,6 +54,7 @@ import {
 import { tryParseEnvelope } from "@/lib/engines/contracts";
 
 import { deriveRenderUi } from "@/lib/render-state";
+import { buildRenderPayload } from "@/lib/video-forge";
 
 interface AssetRecord {
   id: string;
@@ -326,26 +327,28 @@ const GeneratedVideos = () => {
     if (renderingNow.has(rec.id)) return;
     setRenderingNow((s) => new Set(s).add(rec.id));
 
-    // Pull structured fields out of the envelope to send to FacelessForge.
+    // Build the render payload from the active envelope. Same shape as the
+    // Video Forge auto-render fires after Generate.
     const env = tryParseEnvelope(rec.content);
-    const out = (env?.output ?? {}) as Record<string, unknown>;
-    const sceneBreakdown = Array.isArray(out.scene_breakdown) ? (out.scene_breakdown as unknown[]) : [];
-    const stockTerms = Array.isArray(out.stock_footage_terms) ? (out.stock_footage_terms as unknown[]) : [];
-    const voiceoverNotes = out.voiceover_notes ?? null;
+    const output = (env?.output ?? null) as Parameters<typeof buildRenderPayload>[1] | null;
+    if (!output) {
+      setRenderingNow((s) => {
+        const n = new Set(s);
+        n.delete(rec.id);
+        return n;
+      });
+      toast({
+        title: "Render request failed",
+        description: "Could not parse the script envelope for this asset.",
+        variant: "destructive",
+      });
+      return;
+    }
+    // Title comes from the asset row (user-editable), so override after build.
+    const body = { ...buildRenderPayload(rec.id, output), title: rec.title, script: meta.fullScript };
 
     const { data, error } = await supabase.functions.invoke("render-video", {
-      body: {
-        asset_id: rec.id,
-        title: rec.title,
-        script: meta.fullScript,
-        scene_breakdown: sceneBreakdown,
-        stock_footage_terms: stockTerms,
-        captions: {
-          short_caption: meta.shortCaption,
-          long_caption: meta.longCaption,
-        },
-        voiceover_notes: voiceoverNotes,
-      },
+      body,
     });
 
     setRenderingNow((s) => {
