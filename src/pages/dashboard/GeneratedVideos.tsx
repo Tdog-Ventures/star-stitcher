@@ -837,21 +837,46 @@ const GeneratedVideos = () => {
                           </Button>
                         );
                       }
+                      const currentEngine: RenderEngine =
+                        engineByAsset[rec.id] ?? (rec.render_engine as RenderEngine | null) ?? "videoforge";
                       return (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleRender(rec, meta)}
-                          disabled={isSubmitting}
-                          data-testid="render-video"
-                        >
-                          {isSubmitting ? (
-                            <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <Film className="mr-2 h-3.5 w-3.5" />
-                          )}
-                          Render video
-                        </Button>
+                        <>
+                          <Select
+                            value={currentEngine}
+                            onValueChange={(v) =>
+                              setEngineByAsset((prev) => ({ ...prev, [rec.id]: v as RenderEngine }))
+                            }
+                          >
+                            <SelectTrigger
+                              className="h-8 w-[140px] text-xs"
+                              aria-label="Render engine"
+                              data-testid="engine-select"
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {RENDER_ENGINES.map((e) => (
+                                <SelectItem key={e.value} value={e.value} className="text-xs">
+                                  {e.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleRender(rec, meta)}
+                            disabled={isSubmitting}
+                            data-testid="render-video"
+                          >
+                            {isSubmitting ? (
+                              <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Film className="mr-2 h-3.5 w-3.5" />
+                            )}
+                            Render video
+                          </Button>
+                        </>
                       );
                     })()}
                     <Button asChild size="sm" variant="ghost">
