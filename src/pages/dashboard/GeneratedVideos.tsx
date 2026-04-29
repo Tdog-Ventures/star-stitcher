@@ -375,7 +375,7 @@ const GeneratedVideos = () => {
   const getProgressForAsset = (assetId: string): { value: number; reported: boolean } => {
     const entry = progressByAsset[assetId];
     if (!entry) return { value: 0, reported: false };
-    if (entry.reported !== null) return { value: entry.value ?? entry.reported, reported: true };
+    if (entry.reported !== null) return { value: entry.reported, reported: true };
     const elapsed = (Date.now() - entry.startedAt) / 1000; // seconds
     // Asymptotic curve: 0→95 over ~90s, slows after.
     const v = Math.min(95, Math.round(95 * (1 - Math.exp(-elapsed / 30))));
