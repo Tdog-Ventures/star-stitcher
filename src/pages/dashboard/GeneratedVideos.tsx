@@ -203,6 +203,13 @@ const GeneratedVideos = () => {
   const [polling, setPolling] = useState<Set<string>>(new Set());
   const [renderingNow, setRenderingNow] = useState<Set<string>>(new Set());
   const [cancellingNow, setCancellingNow] = useState<Set<string>>(new Set());
+  // Live progress per asset_id. `reported` is the latest 0-100 from upstream
+  // (null = upstream hasn't given us a number yet). `startedAt` lets us draw
+  // a smooth fallback curve so the bar is never frozen at 0.
+  const [progressByAsset, setProgressByAsset] = useState<
+    Record<string, { reported: number | null; startedAt: number }>
+  >({});
+  const [tick, setTick] = useState(0); // re-render every second for fallback curve
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = async () => {
