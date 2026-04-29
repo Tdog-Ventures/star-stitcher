@@ -45,6 +45,7 @@ export type Database = {
           created_at: string
           engine_key: string
           id: string
+          render_engine: string | null
           render_job_id: string | null
           render_status: string | null
           rendered_video_url: string | null
@@ -60,6 +61,7 @@ export type Database = {
           created_at?: string
           engine_key?: string
           id?: string
+          render_engine?: string | null
           render_job_id?: string | null
           render_status?: string | null
           rendered_video_url?: string | null
@@ -75,6 +77,7 @@ export type Database = {
           created_at?: string
           engine_key?: string
           id?: string
+          render_engine?: string | null
           render_job_id?: string | null
           render_status?: string | null
           rendered_video_url?: string | null
