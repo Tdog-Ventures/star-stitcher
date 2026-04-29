@@ -867,20 +867,19 @@ function buildTitle(input: VideoForgeInput, mode: VideoMode): string {
 }
 
 function buildCoreAngle(input: VideoForgeInput, mode: VideoMode): string {
-  const who = input.target_audience || "the viewer";
   const topic = input.topic || "the topic";
   if (mode === "long_form")
-    return `Treat ${topic} as a system ${who} can run weekly — not a tactic to try once. The whole video is the loop, made visible.`;
+    return `Treat ${topic} as a system you can run weekly — not a tactic to try once. The whole video is the loop, made visible.`;
   if (mode === "faceless")
     return `${topic}, told entirely in visuals + VO. The on-screen text IS the argument; the voice is the rhythm.`;
   if (mode === "product_demo")
-    return `Show, don't tell. ${topic} works because ${who} watches it work, end-to-end, in under two minutes.`;
-  return `${topic} as one move ${who} can make today. Skip the theory, show the move.`;
+    return `Show, don't tell. ${topic} works because you watch it work, end-to-end, in under two minutes.`;
+  return `${topic} as one move you can make today. Skip the theory, show the move.`;
 }
 
 function buildViewerPromise(input: VideoForgeInput): string {
   const outcome = (input.desired_outcome || "make one better decision today").toLowerCase();
-  return `By the end of this video, ${input.target_audience || "you"} will be able to ${outcome} — without watching anything else on ${input.topic || "the topic"}.`;
+  return `By the end of this video you'll be able to ${outcome} — without watching anything else on ${input.topic || "the topic"}.`;
 }
 
 // ---------- main entry ----------
