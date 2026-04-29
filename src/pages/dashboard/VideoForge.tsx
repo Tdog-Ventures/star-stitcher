@@ -292,6 +292,18 @@ const VideoForge = () => {
       description="Turn an idea into a production-ready video plan — script, scenes, captions, thumbnails, and a distribution playbook. Rendered MP4 export coming next."
       actions={
         <>
+          <Select value={renderEngine} onValueChange={(v) => setRenderEngine(v as RenderEngine)}>
+            <SelectTrigger size="sm" className="h-9 w-[170px]" aria-label="Render engine">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {RENDER_ENGINES.map((e) => (
+                <SelectItem key={e.value} value={e.value}>
+                  {e.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button variant="outline" size="sm" onClick={loadSample}>
             <Wand2 className="mr-2 h-4 w-4" />
             Load sample
