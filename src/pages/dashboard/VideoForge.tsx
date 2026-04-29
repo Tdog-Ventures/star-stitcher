@@ -84,6 +84,7 @@ const VideoForge = () => {
   const [history, setHistory] = useState<VideoForgeHistoryEntry[]>([]);
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
   const [selectedVariant, setSelectedVariant] = useState<ForgeVariant>("deterministic");
+  const [renderEngine, setRenderEngine] = useState<RenderEngine>("videoforge");
 
   const set = <K extends keyof VideoForgeInput>(key: K, value: VideoForgeInput[K]) =>
     setFields((prev) => ({ ...prev, [key]: value }));
