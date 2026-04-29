@@ -211,6 +211,14 @@ Deno.serve(async (req) => {
 
   let jobId = "";
   let upstreamStatus = "queued";
+  // TEMP DEBUG: log full upstream payload + masked key so we can confirm
+  // FacelessForge is accepting the `engine` field. Remove after verification.
+  console.log("[render-video] upstream url:", renderUrl);
+  console.log("[render-video] upstream payload:", JSON.stringify(upstreamPayload, null, 2));
+  console.log("[render-video] headers:", {
+    "X-FacelessForge-Key": "***" + apiKey.slice(-4),
+    "Content-Type": "application/json",
+  });
   try {
     const upstream = await fetch(
       renderUrl,
@@ -223,6 +231,7 @@ Deno.serve(async (req) => {
         body: JSON.stringify(upstreamPayload),
       },
     );
+    console.log("[render-video] upstream status:", upstream.status);
     const text = await upstream.text();
     if (!upstream.ok) {
       console.error("[render-video] upstream error", upstream.status, text);
