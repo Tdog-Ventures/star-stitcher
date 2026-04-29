@@ -328,7 +328,7 @@ function buildCta(input: VideoForgeInput, mode: VideoMode): string {
     case "tutorial":
       return `Hit save before you scroll, then run the 3 steps the next time you touch ${topic} — today if you can.`;
     case "thought_leadership":
-      return `Send this to one ${who} who needs it today — that's the share. The ones who watch alone don't change anything.`;
+      return `Send this to one person who needs it today — that's the share. The ones who watch alone don't change anything.`;
     case "entertainment":
       return `Follow now — next one drops Tuesday and you'll miss it if you don't.`;
     case "product_demo":
