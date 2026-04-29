@@ -215,6 +215,8 @@ const GeneratedVideos = () => {
   const [progressByAsset, setProgressByAsset] = useState<
     Record<string, { reported: number | null; startedAt: number }>
   >({});
+  // Per-row engine selector for the manual render flow. Defaults to videoforge.
+  const [engineByAsset, setEngineByAsset] = useState<Record<string, RenderEngine>>({});
   const [tick, setTick] = useState(0); // re-render every second for fallback curve
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
