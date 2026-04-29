@@ -55,7 +55,12 @@ import {
 import { tryParseEnvelope } from "@/lib/engines/contracts";
 
 import { deriveRenderUi } from "@/lib/render-state";
-import { buildRenderPayload } from "@/lib/video-forge";
+import {
+  buildRenderPayload,
+  RENDER_ENGINES,
+  RENDER_ENGINE_LABEL,
+  type RenderEngine,
+} from "@/lib/video-forge";
 
 interface AssetRecord {
   id: string;
