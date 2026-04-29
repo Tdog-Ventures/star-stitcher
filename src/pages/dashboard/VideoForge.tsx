@@ -201,10 +201,46 @@ const VideoForge = () => {
     await trackEvent("asset_created", { source: "video_forge", asset_id: asset.id });
 
     setSavedAssetId(asset.id);
+
+    // Auto-queue an MP4 render with FacelessForge using the active variant,
+    // then send the user to /videos to watch progress. Manual-first principle
+    // is preserved — the form was filled by hand; this just removes the extra
+    // click between "I have a script" and "I have an MP4".
+    const renderBody = buildRenderPayload(asset.id, result);
+    const { data: renderData, error: renderError } = await supabase.functions.invoke(
+      "render-video",
+      { body: renderBody },
+    );
+
+    if (renderError) {
+      toast({
+        title: "Script saved — render couldn't start",
+        description: `${renderError.message}. Open it from Generated Videos to retry.`,
+        variant: "destructive",
+      });
+      navigate("/videos");
+      return;
+    }
+
+    const renderPayload = (renderData ?? {}) as { job_id?: string; render_job_id?: string };
+    const jobId = renderPayload.job_id ?? renderPayload.render_job_id;
+    if (!jobId) {
+      toast({
+        title: "Script saved — render didn't queue",
+        description: "FacelessForge didn't return a job id. Retry from Generated Videos.",
+        variant: "destructive",
+      });
+      navigate("/videos");
+      return;
+    }
+
+    await trackEvent("video_forge_auto_render_queued", { asset_id: asset.id, job_id: jobId });
+
     toast({
-      title: "Video script generated",
-      description: "Saved to assets — ready to distribute.",
+      title: "Render queued",
+      description: "Taking you to Generated Videos to watch progress.",
     });
+    navigate("/videos");
   };
 
   const loadSample = () => {
@@ -259,7 +295,7 @@ const VideoForge = () => {
           </Button>
           <Button size="sm" onClick={handleGenerate} disabled={!canGenerate || saving}>
             <Sparkles className="mr-2 h-4 w-4" />
-            {saving ? "Generating…" : "Generate video"}
+            {saving ? "Generating & queuing render…" : "Generate & render video"}
           </Button>
         </>
       }
