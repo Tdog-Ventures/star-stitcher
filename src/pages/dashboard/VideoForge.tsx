@@ -95,6 +95,13 @@ const VideoForge = () => {
     const draft = generateVideoForge(fields);
     setOutput(draft);
 
+    const entryId =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `h_${Date.now()}`;
+    let polished: VideoForgeOutput | null = null;
+    let polishError: string | null = null;
+
     // Polish pass: rewrite narration via DeepSeek so each scene is genuinely
     // about the topic. Falls back to the deterministic draft on any failure
     // or timeout (15s end-to-end), so the form never hangs.
@@ -115,11 +122,31 @@ const VideoForge = () => {
       ])) as { data: VideoForgeOutput | null; error: unknown };
       if (!error && data && Array.isArray((data as VideoForgeOutput).scene_breakdown)) {
         result = data as VideoForgeOutput;
+        polished = result;
         setOutput(result);
+      } else if (error) {
+        polishError = error instanceof Error ? error.message : String(error);
       }
     } catch (e) {
+      polishError = e instanceof Error ? e.message : String(e);
       console.warn("[video-forge] polish skipped", e);
     }
+
+    const activeVariant: ForgeVariant = polished ? "polished" : "deterministic";
+    setHistory((prev) => [
+      ...prev,
+      {
+        id: entryId,
+        createdAt: Date.now(),
+        topic: fields.topic,
+        draft,
+        polished,
+        polishError,
+        activeVariant,
+      },
+    ]);
+    setSelectedHistoryId(entryId);
+    setSelectedVariant(activeVariant);
 
     // Pre-save validation: every required output field must be present and
     // non-empty, and every scene must carry the production fields.
