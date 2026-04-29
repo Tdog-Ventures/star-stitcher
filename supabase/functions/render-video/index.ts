@@ -246,8 +246,12 @@ Deno.serve(async (req) => {
         body: JSON.stringify(upstreamPayload),
       });
       const text = await resp.text();
-      console.log("[render-video] upstream", url, "->", resp.status);
-      if (resp.status !== 404) {
+      const ct = resp.headers.get("content-type") ?? "";
+      console.log("[render-video] upstream", url, "->", resp.status, "ct:", ct);
+      // A 200 that returns HTML (Emergent preview shell, Cloudflare challenge,
+      // etc.) is not a real API response — keep trying the next candidate.
+      const looksHtml = ct.includes("text/html") || text.trimStart().startsWith("<");
+      if (resp.status !== 404 && !looksHtml) {
         upstream = resp;
         lastText = text;
         usedUrl = url;
@@ -258,10 +262,11 @@ Deno.serve(async (req) => {
     }
 
     if (!upstream) {
-      console.error("[render-video] all candidate urls returned 404", candidateUrls);
+      console.error("[render-video] no candidate url returned a usable JSON response", candidateUrls);
+      const preview = lastText.slice(0, 300);
       return new Response(
         JSON.stringify({
-          error: `FacelessForge endpoint not found. Tried: ${candidatePaths.join(", ")}. Last response: ${lastText}`,
+          error: `FacelessForge did not return a JSON API response on any known path. The configured FACELESSFORGE_BASE_URL (${baseUrl}) appears to be a preview/loader host, not the API. Tried: ${candidatePaths.join(", ")}. Last body preview: ${preview}`,
         }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
