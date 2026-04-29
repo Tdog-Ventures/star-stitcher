@@ -226,7 +226,7 @@ const GeneratedVideos = () => {
       supabase
         .from("assets")
         .select(
-          "id, title, engine_key, channel, status, source_record_id, created_at, updated_at, content, render_job_id, rendered_video_url, render_status",
+          "id, title, engine_key, channel, status, source_record_id, created_at, updated_at, content, render_job_id, rendered_video_url, render_status, render_engine",
         )
         .eq("engine_key", "video_forge")
         .order("created_at", { ascending: false }),
