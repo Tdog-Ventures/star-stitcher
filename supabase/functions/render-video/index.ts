@@ -189,8 +189,19 @@ Deno.serve(async (req) => {
       { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
-  const renderUrl = facelessForgeUrl(baseUrl, "/api/external/render-video");
-  if (!renderUrl) {
+  // Try multiple endpoint paths until one returns a non-404. The original
+  // /api/external/render-video 404s on the current FacelessForge deployment,
+  // so we fall back to the simpler shapes used by other FacelessForge builds.
+  const candidatePaths = [
+    "/render",
+    "/api/render-video",
+    "/v1/render",
+    "/api/external/render-video",
+  ];
+  const candidateUrls = candidatePaths
+    .map((p) => facelessForgeUrl(baseUrl, p))
+    .filter((u): u is string => !!u);
+  if (candidateUrls.length === 0) {
     return new Response(
       JSON.stringify({ error: "FacelessForge base URL is invalid" }),
       { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -213,38 +224,62 @@ Deno.serve(async (req) => {
   let upstreamStatus = "queued";
   // TEMP DEBUG: log full upstream payload + masked key so we can confirm
   // FacelessForge is accepting the `engine` field. Remove after verification.
-  console.log("[render-video] upstream url:", renderUrl);
+  console.log("[render-video] candidate urls:", candidateUrls);
   console.log("[render-video] upstream payload:", JSON.stringify(upstreamPayload, null, 2));
   console.log("[render-video] headers:", {
     "X-FacelessForge-Key": "***" + apiKey.slice(-4),
     "Content-Type": "application/json",
   });
+
+  let upstream: Response | null = null;
+  let lastText = "";
+  let usedUrl = "";
   try {
-    const upstream = await fetch(
-      renderUrl,
-      {
+    for (const url of candidateUrls) {
+      console.log("[render-video] trying upstream url:", url);
+      const resp = await fetch(url, {
         method: "POST",
         headers: {
           "X-FacelessForge-Key": apiKey,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(upstreamPayload),
-      },
-    );
-    console.log("[render-video] upstream status:", upstream.status);
-    const text = await upstream.text();
-    if (!upstream.ok) {
-      console.error("[render-video] upstream error", upstream.status, text);
+      });
+      const text = await resp.text();
+      console.log("[render-video] upstream", url, "->", resp.status);
+      if (resp.status !== 404) {
+        upstream = resp;
+        lastText = text;
+        usedUrl = url;
+        break;
+      }
+      lastText = text;
+      usedUrl = url;
+    }
+
+    if (!upstream) {
+      console.error("[render-video] all candidate urls returned 404", candidateUrls);
       return new Response(
-        JSON.stringify({ error: `FacelessForge error [${upstream.status}]: ${text}` }),
+        JSON.stringify({
+          error: `FacelessForge endpoint not found. Tried: ${candidatePaths.join(", ")}. Last response: ${lastText}`,
+        }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    console.log("[render-video] using upstream url:", usedUrl, "status:", upstream.status);
+    if (!upstream.ok) {
+      console.error("[render-video] upstream error", upstream.status, lastText);
+      return new Response(
+        JSON.stringify({ error: `FacelessForge error [${upstream.status}] from ${usedUrl}: ${lastText}` }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
     let data: Record<string, unknown> = {};
     try {
-      data = text ? JSON.parse(text) : {};
+      data = lastText ? JSON.parse(lastText) : {};
     } catch {
-      console.error("[render-video] non-JSON upstream body", text);
+      console.error("[render-video] non-JSON upstream body", lastText);
       return new Response(
         JSON.stringify({ error: "FacelessForge returned non-JSON response" }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
