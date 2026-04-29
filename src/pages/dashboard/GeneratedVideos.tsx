@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import {
   Dialog,
   DialogContent,
@@ -202,6 +203,13 @@ const GeneratedVideos = () => {
   const [polling, setPolling] = useState<Set<string>>(new Set());
   const [renderingNow, setRenderingNow] = useState<Set<string>>(new Set());
   const [cancellingNow, setCancellingNow] = useState<Set<string>>(new Set());
+  // Live progress per asset_id. `reported` is the latest 0-100 from upstream
+  // (null = upstream hasn't given us a number yet). `startedAt` lets us draw
+  // a smooth fallback curve so the bar is never frozen at 0.
+  const [progressByAsset, setProgressByAsset] = useState<
+    Record<string, { reported: number | null; startedAt: number }>
+  >({});
+  const [tick, setTick] = useState(0); // re-render every second for fallback curve
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = async () => {
@@ -263,7 +271,9 @@ const GeneratedVideos = () => {
   // can never claim an MP4 exists.
   // ---------------------------------------------------------------------------
 
-  // Resume polling for any in-flight jobs after a page reload.
+  // Resume polling for any in-flight jobs after a page reload. Also seed
+  // a startedAt timestamp per asset so the fallback progress curve has an
+  // anchor when upstream doesn't report a real percentage.
   useEffect(() => {
     if (!rows.length) return;
     setPolling((prev) => {
@@ -273,7 +283,30 @@ const GeneratedVideos = () => {
       }
       return next;
     });
+    setProgressByAsset((prev) => {
+      const next = { ...prev };
+      const now = Date.now();
+      for (const r of rows) {
+        const inFlight = !!r.render_job_id && !r.rendered_video_url &&
+          r.render_status !== "failed" && r.render_status !== "cancelled";
+        if (inFlight && !next[r.id]) {
+          next[r.id] = { reported: null, startedAt: now };
+        }
+        if (r.rendered_video_url && next[r.id]) {
+          next[r.id] = { ...next[r.id], reported: 100 };
+        }
+      }
+      return next;
+    });
   }, [rows]);
+
+  // Drive a 1s tick so the fallback progress curve animates while we wait
+  // for the next 5s status poll. Only runs while at least one job is in flight.
+  useEffect(() => {
+    if (polling.size === 0) return;
+    const t = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(t);
+  }, [polling.size]);
 
   // Single interval that polls every in-flight job, stops when none are left.
   useEffect(() => {
@@ -301,8 +334,22 @@ const GeneratedVideos = () => {
           body: { job_id: row.render_job_id, asset_id: row.id },
         });
         if (error) continue;
-        const status = (data as { status?: string } | null)?.status;
+        const payload = (data ?? {}) as { status?: string; progress?: number | null };
+        const status = payload.status;
+        if (typeof payload.progress === "number") {
+          const pct = Math.max(0, Math.min(100, Math.round(payload.progress)));
+          setProgressByAsset((prev) => ({
+            ...prev,
+            [id]: { reported: pct, startedAt: prev[id]?.startedAt ?? Date.now() },
+          }));
+        }
         if (status === "completed" || status === "failed" || status === "cancelled") {
+          if (status === "completed") {
+            setProgressByAsset((prev) => ({
+              ...prev,
+              [id]: { reported: 100, startedAt: prev[id]?.startedAt ?? Date.now() },
+            }));
+          }
           setPolling((p) => {
             const n = new Set(p);
             n.delete(id);
@@ -321,6 +368,21 @@ const GeneratedVideos = () => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [polling.size]);
+
+  // Compute the bar value for a given asset. Prefer the upstream-reported
+  // number; otherwise draw a smooth curve from elapsed time, capped at 95%
+  // so we never look "done" before the upstream actually says so.
+  const getProgressForAsset = (assetId: string): { value: number; reported: boolean } => {
+    const entry = progressByAsset[assetId];
+    if (!entry) return { value: 0, reported: false };
+    if (entry.reported !== null) return { value: entry.reported, reported: true };
+    const elapsed = (Date.now() - entry.startedAt) / 1000; // seconds
+    // Asymptotic curve: 0→95 over ~90s, slows after.
+    const v = Math.min(95, Math.round(95 * (1 - Math.exp(-elapsed / 30))));
+    return { value: v, reported: false };
+  };
+  // Touch `tick` so this re-renders every second while polling.
+  void tick;
 
   const handleRender = async (rec: AssetRecord, meta: VideoForgeMeta) => {
     if (!user) return;
@@ -608,11 +670,33 @@ const GeneratedVideos = () => {
                         );
                       }
                       if (renderUi === "rendering") {
+                        const { value, reported } = getProgressForAsset(rec.id);
                         return (
-                          <p className="text-[11px] text-muted-foreground">
-                            <Loader2 className="mr-1 inline h-3 w-3 animate-spin" aria-hidden="true" />
-                            Rendering with FacelessForge — checking status every 5s.
-                          </p>
+                          <div className="space-y-1.5" data-testid="render-progress">
+                            <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                                Rendering with FacelessForge
+                                {rec.render_job_id ? (
+                                  <span className="text-muted-foreground/70">
+                                    {" "}· job {rec.render_job_id.slice(0, 10)}
+                                  </span>
+                                ) : null}
+                              </span>
+                              <span
+                                className="tabular-nums font-medium text-foreground"
+                                data-testid="render-progress-value"
+                              >
+                                {value}%{reported ? "" : " (est.)"}
+                              </span>
+                            </div>
+                            <Progress value={value} className="h-1.5" />
+                            <p className="text-[10px] text-muted-foreground/80">
+                              {reported
+                                ? "Live progress reported by FacelessForge."
+                                : "Waiting for live updates — showing an estimate based on elapsed time."}
+                            </p>
+                          </div>
                         );
                       }
                       if (renderUi === "failed") {
