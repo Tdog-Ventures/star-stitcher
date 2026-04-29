@@ -206,6 +206,7 @@ Deno.serve(async (req) => {
     stock_footage_terms: input.stock_footage_terms,
     captions: input.captions,
     voiceover_notes: input.voiceover_notes,
+    engine: input.engine,
   };
 
   let jobId = "";
