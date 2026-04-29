@@ -1347,6 +1347,24 @@ function collectSpeakabilityIssues(
 // ---------- render payload helper ----------
 
 /**
+ * Render engine routing. Forwarded to FacelessForge as `engine` and persisted
+ * on `assets.render_engine` so Generated Videos can show which engine ran.
+ */
+export type RenderEngine = "videoforge" | "lumina" | "neon";
+
+export const RENDER_ENGINES: { value: RenderEngine; label: string; description: string }[] = [
+  { value: "videoforge", label: "Video Forge", description: "Default — fast canvas renderer" },
+  { value: "lumina", label: "Lumina Forge", description: "AI visuals (cinematic)" },
+  { value: "neon", label: "Neon Studio", description: "Thumbnail-style video" },
+];
+
+export const RENDER_ENGINE_LABEL: Record<RenderEngine, string> = {
+  videoforge: "Video Forge",
+  lumina: "Lumina Forge",
+  neon: "Neon Studio",
+};
+
+/**
  * Shape of the body sent to the `render-video` edge function.
  * Kept narrow on purpose so both Video Forge auto-render and the manual
  * Generated Videos render button stay in sync.
@@ -1359,6 +1377,7 @@ export interface RenderVideoPayload {
   stock_footage_terms: unknown[];
   captions: { short_caption: string; long_caption: string };
   voiceover_notes: unknown;
+  engine: RenderEngine;
 }
 
 /**
@@ -1369,6 +1388,7 @@ export interface RenderVideoPayload {
 export function buildRenderPayload(
   assetId: string,
   output: VideoForgeOutput,
+  engine: RenderEngine = "videoforge",
 ): RenderVideoPayload {
   return {
     asset_id: assetId,
@@ -1381,5 +1401,6 @@ export function buildRenderPayload(
       long_caption: output.captions?.long_caption ?? "",
     },
     voiceover_notes: output.voiceover_notes ?? null,
+    engine,
   };
 }

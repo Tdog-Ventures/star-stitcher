@@ -29,11 +29,13 @@ import {
   LENGTH_LABELS,
   MODE_LABELS,
   PLATFORM_LABELS,
+  RENDER_ENGINES,
   TONE_LABELS,
   buildRenderPayload,
   formatVideoForge,
   generateVideoForge,
   validateVideoForgeOutput,
+  type RenderEngine,
   type VideoForgeInput,
   type VideoForgeOutput,
   type VideoForgeValidationIssue,
@@ -82,6 +84,7 @@ const VideoForge = () => {
   const [history, setHistory] = useState<VideoForgeHistoryEntry[]>([]);
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
   const [selectedVariant, setSelectedVariant] = useState<ForgeVariant>("deterministic");
+  const [renderEngine, setRenderEngine] = useState<RenderEngine>("videoforge");
 
   const set = <K extends keyof VideoForgeInput>(key: K, value: VideoForgeInput[K]) =>
     setFields((prev) => ({ ...prev, [key]: value }));
@@ -206,7 +209,7 @@ const VideoForge = () => {
     // then send the user to /videos to watch progress. Manual-first principle
     // is preserved — the form was filled by hand; this just removes the extra
     // click between "I have a script" and "I have an MP4".
-    const renderBody = buildRenderPayload(asset.id, result);
+    const renderBody = buildRenderPayload(asset.id, result, renderEngine);
     const { data: renderData, error: renderError } = await supabase.functions.invoke(
       "render-video",
       { body: renderBody },
@@ -289,6 +292,18 @@ const VideoForge = () => {
       description="Turn an idea into a production-ready video plan — script, scenes, captions, thumbnails, and a distribution playbook. Rendered MP4 export coming next."
       actions={
         <>
+          <Select value={renderEngine} onValueChange={(v) => setRenderEngine(v as RenderEngine)}>
+            <SelectTrigger className="h-9 w-[170px]" aria-label="Render engine">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {RENDER_ENGINES.map((e) => (
+                <SelectItem key={e.value} value={e.value}>
+                  {e.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button variant="outline" size="sm" onClick={loadSample}>
             <Wand2 className="mr-2 h-4 w-4" />
             Load sample

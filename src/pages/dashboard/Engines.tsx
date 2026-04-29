@@ -1,15 +1,10 @@
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
-  Award,
   Compass,
-  FileText,
   Megaphone,
   Palette,
   Rocket,
-  Send,
-  Sparkles,
-  TrendingUp,
   Video,
   Zap,
 } from "lucide-react";
@@ -22,159 +17,96 @@ interface EngineDef {
   key: string;
   name: string;
   description: string;
-  icon: typeof Sparkles;
+  icon: typeof Video;
   to: string;
-  status: "available" | "coming-soon";
   primary?: boolean;
 }
 
+// V3 layout: six engines, dark cards, neon-green CTAs.
+// Other engines (Growth Hub, Showcase, Offer, Distribution) remain reachable
+// from the sidebar — intentionally hidden here to match the FacelessForge v3
+// "VideoForge and the gang" grid.
 const ENGINES: EngineDef[] = [
   {
     key: "video-forge",
     name: "Video Forge",
-    description:
-      "Turn a topic into a structured video script: hook, main points, CTA, captions, and hashtags. Instant.",
+    description: "Turn a topic into a structured script: hook, scenes, captions, hashtags.",
     icon: Video,
     to: "/engines/video-forge",
-    status: "available",
-    primary: true,
   },
   {
     key: "creator-blueprint",
     name: "Creator Blueprint",
-    description:
-      "Map your creator brand: niche, content pillars, audience, and weekly cadence in one plan.",
+    description: "Map your creator brand: niche, content pillars, audience, weekly cadence.",
     icon: Compass,
     to: "/engines/creator-blueprint",
-    status: "available",
   },
   {
     key: "creator-launchpad",
     name: "Creator Launchpad",
-    description:
-      "A 14-day launch plan for any new offer or content series. Pre-launch through post-launch.",
+    description: "A 14-day launch plan for any new offer or content series.",
     icon: Rocket,
     to: "/engines/creator-launchpad",
-    status: "available",
   },
   {
     key: "neon-studio",
     name: "Neon Studio",
-    description:
-      "Visual brief for thumbnails, covers, and hero graphics. Composition + on-image text.",
+    description: "Visual brief for thumbnails, covers, and hero graphics.",
     icon: Palette,
     to: "/engines/neon-studio",
-    status: "available",
   },
   {
     key: "video-velocity",
     name: "Video Velocity",
-    description:
-      "Batch a week of short-form videos from one core idea. 7 angles, ready to film.",
+    description: "Batch a week of short-form videos from one core idea — 7 angles, ready to film.",
     icon: Zap,
     to: "/engines/video-velocity",
-    status: "available",
   },
   {
     key: "partner-program",
     name: "Partner Program",
-    description:
-      "Design a referral or affiliate program: partner profile, reward, tracking, enablement kit.",
+    description: "Design a referral or affiliate program: partner profile, reward, enablement kit.",
     icon: Megaphone,
     to: "/engines/partner-program",
-    status: "available",
-  },
-  {
-    key: "growth-hub",
-    name: "Growth Hub",
-    description:
-      "One-page growth plan: north-star metric, top channels, weekly experiments.",
-    icon: TrendingUp,
-    to: "/engines/growth-hub",
-    status: "available",
-  },
-  {
-    key: "showcase",
-    name: "ETHINX Showcase",
-    description:
-      "Package finished work into a public-facing case study, portfolio card, or social post.",
-    icon: Award,
-    to: "/engines/showcase",
-    status: "available",
-  },
-  {
-    key: "offer",
-    name: "Offer Engine",
-    description:
-      "Turn a rough product idea into a structured offer: positioning, pricing, proof, CTA.",
-    icon: Sparkles,
-    to: "/engines/offer",
-    status: "available",
-  },
-  {
-    key: "distribution",
-    name: "Distribution Planner",
-    description: "Plan posts and outreach across channels from any saved asset.",
-    icon: Send,
-    to: "/distribution",
-    status: "available",
-  },
-  {
-    key: "content",
-    name: "Content Repurpose",
-    description: "Take one offer and split it into a week of channel-native posts.",
-    icon: FileText,
-    to: "/engines",
-    status: "coming-soon",
+    primary: true,
   },
 ];
 
 const Engines = () => (
   <EngineLayout
     title="Engines"
-    description="Each engine is a small, focused workflow. Open one, fill the form, save the output as an asset."
+    description="Pick an engine. Fill the form. Save the output as an asset. Manual-first, instant output."
   >
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {ENGINES.map((engine) => {
         const Icon = engine.icon;
-        const disabled = engine.status === "coming-soon";
         return (
           <Card
             key={engine.key}
-            className={
-              engine.primary
-                ? "ethinx-hover-glow flex flex-col border-primary/50"
-                : "ethinx-hover-glow flex flex-col"
-            }
+            className="ethinx-hover-glow ethinx-panel flex flex-col bg-card"
           >
-            <CardHeader>
+            <CardHeader className="space-y-3">
               <div className="flex items-center justify-between">
-                <Icon className="h-5 w-5 text-muted-foreground" />
-                {disabled ? (
-                  <Badge variant="secondary">Soon</Badge>
-                ) : engine.primary ? (
-                  <Badge>Primary</Badge>
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-primary/30 bg-primary/10 text-primary">
+                  <Icon className="h-5 w-5" />
+                </span>
+                {engine.primary ? (
+                  <Badge className="border-primary/40 bg-primary/15 text-primary hover:bg-primary/20">
+                    Primary
+                  </Badge>
                 ) : null}
               </div>
-              <CardTitle className="mt-3 text-base">{engine.name}</CardTitle>
-              <CardDescription>{engine.description}</CardDescription>
+              <CardTitle className="text-base text-foreground">{engine.name}</CardTitle>
+              <CardDescription className="text-muted-foreground">
+                {engine.description}
+              </CardDescription>
             </CardHeader>
-            <CardContent className="mt-auto">
-              <Button
-                asChild={!disabled}
-                disabled={disabled}
-                variant={disabled ? "secondary" : "default"}
-                size="sm"
-                className="w-full"
-              >
-                {disabled ? (
-                  <span>Coming soon</span>
-                ) : (
-                  <Link to={engine.to}>
-                    Open engine
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                )}
+            <CardContent className="mt-auto pt-0">
+              <Button asChild size="sm" className="w-full">
+                <Link to={engine.to}>
+                  Open engine
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
               </Button>
             </CardContent>
           </Card>

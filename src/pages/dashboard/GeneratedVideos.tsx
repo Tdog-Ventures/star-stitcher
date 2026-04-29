@@ -55,7 +55,12 @@ import {
 import { tryParseEnvelope } from "@/lib/engines/contracts";
 
 import { deriveRenderUi } from "@/lib/render-state";
-import { buildRenderPayload } from "@/lib/video-forge";
+import {
+  buildRenderPayload,
+  RENDER_ENGINES,
+  RENDER_ENGINE_LABEL,
+  type RenderEngine,
+} from "@/lib/video-forge";
 
 interface AssetRecord {
   id: string;
@@ -70,6 +75,7 @@ interface AssetRecord {
   render_job_id: string | null;
   rendered_video_url: string | null;
   render_status: string | null;
+  render_engine: string | null;
 }
 
 interface TaskLite {
@@ -209,6 +215,8 @@ const GeneratedVideos = () => {
   const [progressByAsset, setProgressByAsset] = useState<
     Record<string, { reported: number | null; startedAt: number }>
   >({});
+  // Per-row engine selector for the manual render flow. Defaults to videoforge.
+  const [engineByAsset, setEngineByAsset] = useState<Record<string, RenderEngine>>({});
   const [tick, setTick] = useState(0); // re-render every second for fallback curve
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -220,7 +228,7 @@ const GeneratedVideos = () => {
       supabase
         .from("assets")
         .select(
-          "id, title, engine_key, channel, status, source_record_id, created_at, updated_at, content, render_job_id, rendered_video_url, render_status",
+          "id, title, engine_key, channel, status, source_record_id, created_at, updated_at, content, render_job_id, rendered_video_url, render_status, render_engine",
         )
         .eq("engine_key", "video_forge")
         .order("created_at", { ascending: false }),
@@ -407,7 +415,8 @@ const GeneratedVideos = () => {
       return;
     }
     // Title comes from the asset row (user-editable), so override after build.
-    const body = { ...buildRenderPayload(rec.id, output), title: rec.title, script: meta.fullScript };
+    const engine = engineByAsset[rec.id] ?? (rec.render_engine as RenderEngine | null) ?? "videoforge";
+    const body = { ...buildRenderPayload(rec.id, output, engine), title: rec.title, script: meta.fullScript };
 
     const { data, error } = await supabase.functions.invoke("render-video", {
       body,
@@ -648,6 +657,15 @@ const GeneratedVideos = () => {
                         {badge.label}
                       </Badge>
                       <StatusBadge status={badge.status} className="text-[10px]" />
+                      {rec.render_engine ? (
+                        <Badge
+                          variant="outline"
+                          className="border-primary/40 bg-primary/10 text-[10px] text-primary"
+                          data-testid="engine-chip"
+                        >
+                          {RENDER_ENGINE_LABEL[rec.render_engine as RenderEngine] ?? rec.render_engine}
+                        </Badge>
+                      ) : null}
                     </div>
                     <dl className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                       {modeLabel ? (
@@ -678,19 +696,27 @@ const GeneratedVideos = () => {
                                 <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
                                 Rendering with FacelessForge
                                 {rec.render_job_id ? (
-                                  <span className="text-muted-foreground/70">
+                                  <span className="font-mono text-muted-foreground/70">
                                     {" "}· job {rec.render_job_id.slice(0, 10)}
                                   </span>
                                 ) : null}
                               </span>
                               <span
-                                className="tabular-nums font-medium text-foreground"
+                                className="flex items-center gap-1.5 tabular-nums font-medium text-primary"
                                 data-testid="render-progress-value"
                               >
-                                {value}%{reported ? "" : " (est.)"}
+                                {value}%
+                                {reported ? null : (
+                                  <Badge
+                                    variant="outline"
+                                    className="border-muted-foreground/30 px-1 py-0 text-[9px] font-normal text-muted-foreground"
+                                  >
+                                    est.
+                                  </Badge>
+                                )}
                               </span>
                             </div>
-                            <Progress value={value} className="h-1.5" />
+                            <Progress value={value} className="h-2" />
                             <p className="text-[10px] text-muted-foreground/80">
                               {reported
                                 ? "Live progress reported by FacelessForge."
@@ -811,21 +837,46 @@ const GeneratedVideos = () => {
                           </Button>
                         );
                       }
+                      const currentEngine: RenderEngine =
+                        engineByAsset[rec.id] ?? (rec.render_engine as RenderEngine | null) ?? "videoforge";
                       return (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleRender(rec, meta)}
-                          disabled={isSubmitting}
-                          data-testid="render-video"
-                        >
-                          {isSubmitting ? (
-                            <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <Film className="mr-2 h-3.5 w-3.5" />
-                          )}
-                          Render video
-                        </Button>
+                        <>
+                          <Select
+                            value={currentEngine}
+                            onValueChange={(v) =>
+                              setEngineByAsset((prev) => ({ ...prev, [rec.id]: v as RenderEngine }))
+                            }
+                          >
+                            <SelectTrigger
+                              className="h-8 w-[140px] text-xs"
+                              aria-label="Render engine"
+                              data-testid="engine-select"
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {RENDER_ENGINES.map((e) => (
+                                <SelectItem key={e.value} value={e.value} className="text-xs">
+                                  {e.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleRender(rec, meta)}
+                            disabled={isSubmitting}
+                            data-testid="render-video"
+                          >
+                            {isSubmitting ? (
+                              <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Film className="mr-2 h-3.5 w-3.5" />
+                            )}
+                            Render video
+                          </Button>
+                        </>
                       );
                     })()}
                     <Button asChild size="sm" variant="ghost">
