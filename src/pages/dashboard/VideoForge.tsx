@@ -293,7 +293,7 @@ const VideoForge = () => {
       actions={
         <>
           <Select value={renderEngine} onValueChange={(v) => setRenderEngine(v as RenderEngine)}>
-            <SelectTrigger size="sm" className="h-9 w-[170px]" aria-label="Render engine">
+            <SelectTrigger className="h-9 w-[170px]" aria-label="Render engine">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
