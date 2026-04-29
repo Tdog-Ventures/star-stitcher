@@ -115,24 +115,49 @@ function applyPatch(draft: DraftIn, patch: PatchShape): DraftIn {
       sceneMap.set(s.scene_number, s.narration.trim());
     }
   }
-  const scene_breakdown = draft.scene_breakdown.map((s) => {
-    const next = sceneMap.get(s.scene_number);
-    return next ? { ...s, narration: next } : s;
-  });
-  const script_sections = {
-    ...draft.script_sections,
-    cta: typeof patch.cta === "string" && patch.cta.trim() ? patch.cta.trim() : draft.script_sections.cta,
-  };
+  const scene_breakdown = (draft.scene_breakdown as Array<Record<string, unknown>>).map(
+    (s) => {
+      const n = sceneMap.get(s.scene_number as number);
+      return n ? { ...s, narration: n } : s;
+    },
+  );
+  const cta =
+    typeof patch.cta === "string" && patch.cta.trim()
+      ? patch.cta.trim()
+      : draft.script_sections.cta;
+  const script_sections = { ...draft.script_sections, cta };
+  const opening_hook =
+    typeof patch.hook === "string" && patch.hook.trim()
+      ? patch.hook.trim()
+      : draft.opening_hook;
+  const viewer_promise =
+    typeof patch.viewer_promise === "string" && patch.viewer_promise.trim()
+      ? patch.viewer_promise.trim()
+      : draft.viewer_promise;
+
+  // Rebuild full_script so saved markdown reflects polished narration.
+  const oldFull = typeof draft.full_script === "string" ? draft.full_script : "";
+  const headerMatch = oldFull.match(/^\[[^\]]+\]/);
+  const header = headerMatch ? headerMatch[0] : "[SHORT-FORM SCRIPT]";
+  const lines: string[] = [header, "", `HOOK: ${opening_hook}`, ""];
+  for (const s of scene_breakdown as Array<Record<string, unknown>>) {
+    lines.push(
+      `Scene ${s.scene_number} · ${s.timecode} · ${s.scene_purpose}`,
+    );
+    lines.push(String(s.narration ?? ""));
+    if (s.on_screen_text) lines.push(`[on-screen: ${s.on_screen_text}]`);
+    lines.push("");
+  }
+  lines.push(`CTA: ${cta}`);
+  const full_script = lines.join("\n");
+
   return {
     ...draft,
-    opening_hook:
-      typeof patch.hook === "string" && patch.hook.trim() ? patch.hook.trim() : draft.opening_hook,
-    viewer_promise:
-      typeof patch.viewer_promise === "string" && patch.viewer_promise.trim()
-        ? patch.viewer_promise.trim()
-        : draft.viewer_promise,
+    opening_hook,
+    viewer_promise,
     script_sections,
-    scene_breakdown,
+    scene_breakdown: scene_breakdown as DraftIn["scene_breakdown"],
+    full_script,
   };
 }
 
