@@ -167,6 +167,8 @@ export interface VideoForgeOutput {
   hashtags: string[];
   distribution_recommendation: string;
   success_metric: string;
+  /** True when narration was rewritten by the AI polish pass. */
+  polished?: boolean;
 }
 
 // ---------- mode resolution ----------
@@ -210,57 +212,54 @@ function timecode(seconds: number): string {
 // ---------- hooks (mode + tone aware) ----------
 
 function buildHook(input: VideoForgeInput, mode: VideoMode): string {
-  const who = input.target_audience || "you";
   const topic = input.topic || "this";
 
-  // Hooks must create tension, contradiction, or stakes — never summarize.
-  // Avoid safe phrasing ("here's how", "the 30-second version", "what most
-  // people get wrong"). Use second-person, callouts, pattern interrupts.
+  // Hooks create tension or stakes around the topic — they never name the
+  // audience verbatim (that gets handled in metadata + B-roll, not narration).
   if (mode === "short_form") {
     switch (input.tone) {
       case "controversial":
-        return `If you're ${who}, everything you've been told about ${topic} is wrong — and it's costing you customers every week you keep doing it.`;
+        return `Everything you've been told about ${topic} is wrong — and it's costing you every week you keep doing it.`;
       case "bold":
         return `You're not bad at ${topic}. You're running it backwards. 30 seconds — see for yourself.`;
       case "storytelling":
-        return `I lost six months to ${topic} doing exactly what ${who} are told to do. One change later it worked. You'll spot it by second 20.`;
+        return `I lost six months to ${topic} doing the "right" thing. One change later it worked. You'll spot it by second 20.`;
       case "casual":
-        return `Quick one for ${who}: the part of ${topic} that actually moves the needle is the part nobody is teaching you.`;
+        return `Quick one: the part of ${topic} that actually moves the needle is the part nobody is teaching.`;
       case "cinematic":
-        return `One move in ${topic} separates ${who} who win from ${who} who quit. Most never see it. You're about to.`;
+        return `One move in ${topic} separates the people who win from the people who quit. Most never see it. You're about to.`;
       case "educational":
-        return `${who}: 90% of what you're doing for ${topic} doesn't matter. The 10% that does is in this clip.`;
+        return `90% of what you've heard about ${topic} doesn't matter. The 10% that does is in this clip.`;
       case "professional":
       default:
-        return `If ${topic} isn't working for ${who} yet, it's not effort — it's order of operations. Watch the next 30 seconds before you ship another one.`;
+        return `If ${topic} isn't clicking yet, it isn't effort — it's order of operations. Watch the next 30 seconds before you try again.`;
     }
   }
 
   if (mode === "long_form") {
-    return `${who}: if ${topic} hasn't moved for you in 90 days, the problem isn't the tactic — it's the loop you don't know you're running. In the next few minutes you'll see the loop, the proof it works, and the 3-step plan you can run this week. The third step is the one that breaks every founder who skips it.`;
+    return `If ${topic} hasn't moved for you in 90 days, the problem isn't the tactic — it's the loop you don't know you're running. In the next few minutes you'll see the loop, the proof it works, and the 3-step plan you can run this week. The third step is the one most people skip.`;
   }
 
   if (mode === "faceless") {
-    return `${topic}. You're doing the right things in the wrong order — and the loop you're missing is the one nobody draws on a whiteboard.`;
+    return `${topic}. The right things in the wrong order — and the loop nobody draws on a whiteboard.`;
   }
 
   // product_demo
-  return `${who} burn 30 minutes a day on ${topic}. Watch what 30 seconds inside the product looks like — then decide.`;
+  return `30 minutes a day disappear into ${topic}. Watch what 30 seconds inside the product looks like — then decide.`;
 }
 
 // ---------- script sections ----------
 
 function buildScriptSections(input: VideoForgeInput, mode: VideoMode): ScriptSections {
-  const who = input.target_audience || "your viewer";
   const topic = input.topic || "the topic";
   const outcome = (input.desired_outcome || "make a real decision today").toLowerCase();
 
   if (mode === "long_form") {
     return {
-      intro: `If you're ${who} and ${topic} hasn't moved for you in 90 days, this is the video. You'll get the reframe, the receipts, and a 3-step plan you can run this week — no fluff, no filler.`,
-      problem: `Here's where you're stuck. You're treating ${topic} as a tactic — try one thing, wait two weeks, bail when nothing happens. That loop is the problem, not the tactic.`,
-      insight: `${topic} isn't a single move. It's a feedback loop. Once you see it as a loop, every "tactic" becomes one knob you can turn — and you stop guessing.`,
-      proof: `Three ${who}, same loop, last quarter. Look at week 2 vs week 6 on the chart. Same pattern every time. This isn't theory; it's repeatable.`,
+      intro: `If ${topic} hasn't moved for you in 90 days, this is the video. You'll get the reframe, the receipts, and a 3-step plan you can run this week — no fluff, no filler.`,
+      problem: `Here's where most people get stuck. ${topic} gets treated as a tactic — try one thing, wait two weeks, bail when nothing happens. That loop is the problem, not the tactic.`,
+      insight: `${topic} isn't a single move. It's a feedback loop. Once you see it as a loop, every "tactic" becomes one knob you can turn — and the guessing stops.`,
+      proof: `Three teams, same loop, last quarter. Look at week 2 vs week 6 on the chart. Same pattern every time. This isn't theory; it's repeatable.`,
       solution: `Three steps, run weekly. One: pick the single input you'll measure. Two: ship one experiment against it this week. Three: every Friday, kill what didn't move the input and double what did. That's the loop.`,
       cta: buildCta(input, mode),
     };
@@ -268,11 +267,11 @@ function buildScriptSections(input: VideoForgeInput, mode: VideoMode): ScriptSec
 
   if (mode === "faceless") {
     return {
-      intro: `If you're ${who}, ${topic} feels harder than it should. It's not your effort. It's the order you're running it in.`,
-      problem: `You're fixing the wrong layer. The break isn't on the surface — it's one level down, where you're not looking.`,
-      insight: `${topic} isn't one move. It's a loop. Each piece feeds the next — that's why your wins compound when you finally run it in order.`,
+      intro: `${topic} feels harder than it should. It isn't effort. It's the order it's being run in.`,
+      problem: `Wrong layer is getting fixed. The break isn't on the surface — it's one level down, where nobody is looking.`,
+      insight: `${topic} isn't one move. It's a loop. Each piece feeds the next — that's why wins compound when it finally runs in order.`,
       proof: `Same effort. New order. The numbers move every time. Watch the curve — not the day-one spike.`,
-      solution: `Three steps to ${outcome}. One: name the loop. Two: ship one experiment this week. Three: review on Friday. Skip step three and you're back to square one in a month.`,
+      solution: `Three steps to ${outcome}. One: name the loop. Two: ship one experiment this week. Three: review on Friday. Skip step three and it resets in a month.`,
       cta: buildCta(input, mode),
     };
   }
@@ -280,8 +279,8 @@ function buildScriptSections(input: VideoForgeInput, mode: VideoMode): ScriptSec
   if (mode === "product_demo") {
     return {
       intro: `Quick one. ${topic}, end-to-end, inside the product — in under two minutes. No slides, no setup, no marketing voice.`,
-      problem: `Right now, you're losing 30 minutes a day to this exact screen. Here's what that looks like.`,
-      insight: `One click in our flow turns those 30 minutes into 30 seconds. We built around the job you're doing — not the tool you've been using.`,
+      problem: `30 minutes a day vanish on this exact screen right now. Here's what that looks like.`,
+      insight: `One click in our flow turns those 30 minutes into 30 seconds. Built around the job — not the tool.`,
       proof: `Real example. Live. No edits. Empty state to finished result, right now.`,
       solution: `Day one looks like this. Connect once. Configure once. Then ship — every time, in seconds. That's the whole loop.`,
       cta: buildCta(input, mode),
@@ -290,18 +289,18 @@ function buildScriptSections(input: VideoForgeInput, mode: VideoMode): ScriptSec
 
   // short_form
   return {
-    intro: `If you're ${who} and you want to ${outcome}, the next 30 seconds matter more than the last 30 days you spent on ${topic}.`,
-    problem: `You keep grinding ${topic} and getting nothing back. Same effort, same dead end, every week. That's not a tactic problem.`,
-    insight: `${topic} isn't a tactic. It's a loop. You're running half of it — that's why it stalls on you.`,
+    intro: `Want to ${outcome}? The next 30 seconds matter more than the last 30 days spent on ${topic}.`,
+    problem: `Same effort on ${topic}, same dead end, every week. That's not a tactic problem — it's a sequence problem.`,
+    insight: `${topic} isn't a tactic. It's a loop. Half of it gets run — that's why it stalls.`,
     proof: `One number tells the story. Same person, same product, twice the result. The only thing that changed was the order.`,
-    solution: `Three things. Pick one input. Ship one experiment a week. Review every Friday. Skip Friday and you're back where you started.`,
+    solution: `Three things. Pick one input. Ship one experiment a week. Review every Friday. Skip Friday and it resets.`,
     cta: buildCta(input, mode),
   };
 }
 
 function buildCta(input: VideoForgeInput, mode: VideoMode): string {
   const topic = input.topic || "this";
-  const who = input.target_audience || "founders";
+  
 
   // CTAs must be immediate. Each one names the action, the mechanism the
   // viewer uses to take it, and a reason to do it now (urgency trigger).
@@ -331,7 +330,7 @@ function buildCta(input: VideoForgeInput, mode: VideoMode): string {
     case "tutorial":
       return `Hit save before you scroll, then run the 3 steps the next time you touch ${topic} — today if you can.`;
     case "thought_leadership":
-      return `Send this to one ${who} who needs it today — that's the share. The ones who watch alone don't change anything.`;
+      return `Send this to one person who needs it today — that's the share. The ones who watch alone don't change anything.`;
     case "entertainment":
       return `Follow now — next one drops Tuesday and you'll miss it if you don't.`;
     case "product_demo":
@@ -870,20 +869,19 @@ function buildTitle(input: VideoForgeInput, mode: VideoMode): string {
 }
 
 function buildCoreAngle(input: VideoForgeInput, mode: VideoMode): string {
-  const who = input.target_audience || "the viewer";
   const topic = input.topic || "the topic";
   if (mode === "long_form")
-    return `Treat ${topic} as a system ${who} can run weekly — not a tactic to try once. The whole video is the loop, made visible.`;
+    return `Treat ${topic} as a system you can run weekly — not a tactic to try once. The whole video is the loop, made visible.`;
   if (mode === "faceless")
     return `${topic}, told entirely in visuals + VO. The on-screen text IS the argument; the voice is the rhythm.`;
   if (mode === "product_demo")
-    return `Show, don't tell. ${topic} works because ${who} watches it work, end-to-end, in under two minutes.`;
-  return `${topic} as one move ${who} can make today. Skip the theory, show the move.`;
+    return `Show, don't tell. ${topic} works because you watch it work, end-to-end, in under two minutes.`;
+  return `${topic} as one move you can make today. Skip the theory, show the move.`;
 }
 
 function buildViewerPromise(input: VideoForgeInput): string {
   const outcome = (input.desired_outcome || "make one better decision today").toLowerCase();
-  return `By the end of this video, ${input.target_audience || "you"} will be able to ${outcome} — without watching anything else on ${input.topic || "the topic"}.`;
+  return `By the end of this video you'll be able to ${outcome} — without watching anything else on ${input.topic || "the topic"}.`;
 }
 
 // ---------- main entry ----------

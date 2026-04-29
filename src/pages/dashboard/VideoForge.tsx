@@ -84,8 +84,34 @@ const VideoForge = () => {
     setSavedAssetId(null);
     setValidationIssues([]);
 
-    const result = generateVideoForge(fields);
-    setOutput(result);
+    const draft = generateVideoForge(fields);
+    setOutput(draft);
+
+    // Polish pass: rewrite narration via DeepSeek so each scene is genuinely
+    // about the topic. Falls back to the deterministic draft on any failure
+    // or timeout (15s end-to-end), so the form never hangs.
+    let result = draft;
+    try {
+      const polishPromise = supabase.functions.invoke("video-forge-polish", {
+        body: { input: fields, draft },
+      });
+      const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
+        setTimeout(
+          () => resolve({ data: null, error: new Error("polish timeout") }),
+          15_000,
+        ),
+      );
+      const { data, error } = (await Promise.race([
+        polishPromise,
+        timeoutPromise,
+      ])) as { data: VideoForgeOutput | null; error: unknown };
+      if (!error && data && Array.isArray((data as VideoForgeOutput).scene_breakdown)) {
+        result = data as VideoForgeOutput;
+        setOutput(result);
+      }
+    } catch (e) {
+      console.warn("[video-forge] polish skipped", e);
+    }
 
     // Pre-save validation: every required output field must be present and
     // non-empty, and every scene must carry the production fields.
