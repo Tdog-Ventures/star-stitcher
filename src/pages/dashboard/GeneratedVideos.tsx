@@ -696,19 +696,27 @@ const GeneratedVideos = () => {
                                 <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
                                 Rendering with FacelessForge
                                 {rec.render_job_id ? (
-                                  <span className="text-muted-foreground/70">
+                                  <span className="font-mono text-muted-foreground/70">
                                     {" "}· job {rec.render_job_id.slice(0, 10)}
                                   </span>
                                 ) : null}
                               </span>
                               <span
-                                className="tabular-nums font-medium text-foreground"
+                                className="flex items-center gap-1.5 tabular-nums font-medium text-primary"
                                 data-testid="render-progress-value"
                               >
-                                {value}%{reported ? "" : " (est.)"}
+                                {value}%
+                                {reported ? null : (
+                                  <Badge
+                                    variant="outline"
+                                    className="border-muted-foreground/30 px-1 py-0 text-[9px] font-normal text-muted-foreground"
+                                  >
+                                    est.
+                                  </Badge>
+                                )}
                               </span>
                             </div>
-                            <Progress value={value} className="h-1.5" />
+                            <Progress value={value} className="h-2" />
                             <p className="text-[10px] text-muted-foreground/80">
                               {reported
                                 ? "Live progress reported by FacelessForge."
