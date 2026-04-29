@@ -218,6 +218,31 @@ const VideoForge = () => {
     setOutput(null);
     setSavedAssetId(null);
     setValidationIssues([]);
+    setSelectedHistoryId(null);
+  };
+
+  const handleSelectHistory = (id: string, variant: ForgeVariant) => {
+    const entry = history.find((h) => h.id === id);
+    if (!entry) return;
+    const next = variant === "polished" ? entry.polished ?? entry.draft : entry.draft;
+    setOutput(next);
+    setSelectedHistoryId(id);
+    setSelectedVariant(variant);
+    setValidationIssues([]);
+    setSavedAssetId(null);
+  };
+
+  const handleRevertHistory = (id: string, variant: ForgeVariant) => {
+    handleSelectHistory(id, variant);
+    toast({
+      title: `Reverted to ${variant} version`,
+      description: "Editing this version. Generate again to capture a new entry.",
+    });
+  };
+
+  const handleClearHistory = () => {
+    setHistory([]);
+    setSelectedHistoryId(null);
   };
 
   return (
