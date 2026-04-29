@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EngineLayout, StatusBadge, type EngineStatus } from "@/components/engine";
 import { OnboardingChecklist } from "@/components/engine/OnboardingChecklist";
+import { FacelessForgeDiagnostics } from "@/components/dashboard/FacelessForgeDiagnostics";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/providers/AuthProvider";
 import {
