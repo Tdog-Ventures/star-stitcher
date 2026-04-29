@@ -75,6 +75,7 @@ interface AssetRecord {
   render_job_id: string | null;
   rendered_video_url: string | null;
   render_status: string | null;
+  render_engine: string | null;
 }
 
 interface TaskLite {
