@@ -167,6 +167,8 @@ export interface VideoForgeOutput {
   hashtags: string[];
   distribution_recommendation: string;
   success_metric: string;
+  /** True when narration was rewritten by the AI polish pass. */
+  polished?: boolean;
 }
 
 // ---------- mode resolution ----------
