@@ -339,6 +339,12 @@ const DashboardOverview = () => {
           </div>
         </section>
       ) : null}
+      <section>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Diagnostics
+        </h2>
+        <FacelessForgeDiagnostics />
+      </section>
 
 
       {isFreshAccount ? (
