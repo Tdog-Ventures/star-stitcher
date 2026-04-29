@@ -271,7 +271,9 @@ const GeneratedVideos = () => {
   // can never claim an MP4 exists.
   // ---------------------------------------------------------------------------
 
-  // Resume polling for any in-flight jobs after a page reload.
+  // Resume polling for any in-flight jobs after a page reload. Also seed
+  // a startedAt timestamp per asset so the fallback progress curve has an
+  // anchor when upstream doesn't report a real percentage.
   useEffect(() => {
     if (!rows.length) return;
     setPolling((prev) => {
@@ -281,7 +283,30 @@ const GeneratedVideos = () => {
       }
       return next;
     });
+    setProgressByAsset((prev) => {
+      const next = { ...prev };
+      const now = Date.now();
+      for (const r of rows) {
+        const inFlight = !!r.render_job_id && !r.rendered_video_url &&
+          r.render_status !== "failed" && r.render_status !== "cancelled";
+        if (inFlight && !next[r.id]) {
+          next[r.id] = { reported: null, startedAt: now };
+        }
+        if (r.rendered_video_url && next[r.id]) {
+          next[r.id] = { ...next[r.id], reported: 100 };
+        }
+      }
+      return next;
+    });
   }, [rows]);
+
+  // Drive a 1s tick so the fallback progress curve animates while we wait
+  // for the next 5s status poll. Only runs while at least one job is in flight.
+  useEffect(() => {
+    if (polling.size === 0) return;
+    const t = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(t);
+  }, [polling.size]);
 
   // Single interval that polls every in-flight job, stops when none are left.
   useEffect(() => {
@@ -309,8 +334,22 @@ const GeneratedVideos = () => {
           body: { job_id: row.render_job_id, asset_id: row.id },
         });
         if (error) continue;
-        const status = (data as { status?: string } | null)?.status;
+        const payload = (data ?? {}) as { status?: string; progress?: number | null };
+        const status = payload.status;
+        if (typeof payload.progress === "number") {
+          const pct = Math.max(0, Math.min(100, Math.round(payload.progress)));
+          setProgressByAsset((prev) => ({
+            ...prev,
+            [id]: { reported: pct, startedAt: prev[id]?.startedAt ?? Date.now() },
+          }));
+        }
         if (status === "completed" || status === "failed" || status === "cancelled") {
+          if (status === "completed") {
+            setProgressByAsset((prev) => ({
+              ...prev,
+              [id]: { reported: 100, startedAt: prev[id]?.startedAt ?? Date.now() },
+            }));
+          }
           setPolling((p) => {
             const n = new Set(p);
             n.delete(id);
@@ -329,6 +368,21 @@ const GeneratedVideos = () => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [polling.size]);
+
+  // Compute the bar value for a given asset. Prefer the upstream-reported
+  // number; otherwise draw a smooth curve from elapsed time, capped at 95%
+  // so we never look "done" before the upstream actually says so.
+  const getProgressForAsset = (assetId: string): { value: number; reported: boolean } => {
+    const entry = progressByAsset[assetId];
+    if (!entry) return { value: 0, reported: false };
+    if (entry.reported !== null) return { value: entry.value ?? entry.reported, reported: true };
+    const elapsed = (Date.now() - entry.startedAt) / 1000; // seconds
+    // Asymptotic curve: 0→95 over ~90s, slows after.
+    const v = Math.min(95, Math.round(95 * (1 - Math.exp(-elapsed / 30))));
+    return { value: v, reported: false };
+  };
+  // Touch `tick` so this re-renders every second while polling.
+  void tick;
 
   const handleRender = async (rec: AssetRecord, meta: VideoForgeMeta) => {
     if (!user) return;
