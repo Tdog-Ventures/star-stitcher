@@ -31,11 +31,14 @@ interface RenderInput {
   stock_footage_terms: unknown[];
   captions: { short_caption?: string; long_caption?: string };
   voiceover_notes: unknown;
+  engine: "videoforge" | "lumina" | "neon";
 }
 
 function isUuid(s: unknown): s is string {
   return typeof s === "string" && /^[0-9a-f-]{36}$/i.test(s);
 }
+
+const ALLOWED_ENGINES = new Set(["videoforge", "lumina", "neon"]);
 
 function validate(body: unknown): { ok: true; data: RenderInput } | { ok: false; error: string } {
   if (!body || typeof body !== "object") return { ok: false, error: "Body must be an object" };
@@ -46,6 +49,8 @@ function validate(body: unknown): { ok: true; data: RenderInput } | { ok: false;
   if (!Array.isArray(b.scene_breakdown)) return { ok: false, error: "scene_breakdown must be an array" };
   if (!Array.isArray(b.stock_footage_terms)) return { ok: false, error: "stock_footage_terms must be an array" };
   const caps = (b.captions ?? {}) as Record<string, unknown>;
+  const engineRaw = typeof b.engine === "string" ? b.engine : "videoforge";
+  const engine = (ALLOWED_ENGINES.has(engineRaw) ? engineRaw : "videoforge") as RenderInput["engine"];
   return {
     ok: true,
     data: {
@@ -59,6 +64,7 @@ function validate(body: unknown): { ok: true; data: RenderInput } | { ok: false;
         long_caption: typeof caps.long_caption === "string" ? caps.long_caption : undefined,
       },
       voiceover_notes: b.voiceover_notes ?? null,
+      engine,
     },
   };
 }
