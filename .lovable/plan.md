@@ -1,141 +1,66 @@
-# FacelessForge Render Integration — Stub
+# Smarter Video Forge scripts (DeepSeek-polished, audience-aware)
 
-Goal: wire the full integration shape (DB columns, edge function proxy, UI states, polling) with FacelessForge as the rendering engine, but ship it as a clearly-labeled stub. No real API is called yet. No ffmpeg, no queue, no fake MP4 file.
+## Goal
 
----
+Stop the current script from sounding like generic motivational filler ("you keep grinding…", "ship one experiment a week"). Make every scene actually be **about the topic** for the chosen Goal (Education, Marketing, etc.), and stop reading the audience field literally inside narration.
 
-## 1. Database (migration)
+## Approach
 
-Add two nullable columns to `assets` so any video_forge row can carry render state:
+**Hybrid generation:**
+1. Keep the existing deterministic engine in `src/lib/video-forge.ts` as the **structural skeleton** — it still decides mode, scene count, timecodes, on-screen text, hashtags, captions, distribution, success metric. This guarantees the form always returns *something* fast and offline.
+2. Add a new **DeepSeek polish pass** that rewrites only the spoken narration of each scene + the hook + the viewer promise + the CTA, given the topic, goal, audience, tone, and platform. Structure stays; words become topic-true.
+3. UI gets a small async state so the user sees "Generating script…" while the polish runs (~5-10s), with a graceful fallback to the deterministic output if DeepSeek fails or times out.
 
-- `render_job_id text` — id returned by FacelessForge (or stub)
-- `rendered_video_url text` — final MP4 URL once render completes
+**Audience handling:**
+- Drop audience from spoken narration entirely. No more "If you're Everyone - universal and you want to…".
+- Audience still drives: hashtags, B-roll search terms ("school kids studying solar"), distribution targeting note, and the system prompt to DeepSeek (so the *vocabulary* fits the audience without naming them).
 
-Optional helper (also nullable, used by stub + future real API):
+## What changes
 
-- `render_status text` — one of `null | 'pending' | 'completed' | 'failed'`
+### 1. New secret: `DEEPSEEK_API_KEY`
+User already has a DeepSeek key. Stored as a Supabase secret, used only server-side from a new edge function. Never shipped to the browser.
 
-No RLS changes needed — existing `Assets: own *` policies already gate by `user_id`.
+### 2. New edge function: `supabase/functions/video-forge-polish/index.ts`
+- Auth-gated (requires logged-in user, like other functions).
+- Input: the deterministic `VideoForgeOutput` JSON + the original `VideoForgeInput`.
+- Calls DeepSeek (`deepseek-chat`) with a tight system prompt:
+  - "Rewrite narration so each scene is genuinely about {topic} for goal={goal}. For Education: teach a real fact. For Marketing: sell the outcome. Never address the audience by name — write so the line works for any viewer. Keep timing constraints: scene N has ~X seconds, so ~Y words."
+- Returns a small JSON patch: `{ hook, viewer_promise, cta, scenes: [{scene_number, narration}] }`.
+- Server merges the patch onto the deterministic output and returns the final object. If DeepSeek errors or returns malformed JSON, the function returns the deterministic output unchanged with `{ polished: false, reason }`.
 
-## 2. Backend secrets (placeholders)
+### 3. `src/lib/video-forge.ts` cleanup
+- Remove audience interpolation from every `intro/problem/insight/proof/solution/cta` template across all four modes. Replace with topic-only or generic phrasing ("If {topic} hasn't moved in 90 days…" instead of "If you're {who} and…").
+- Keep `target_audience` flowing into hashtags, B-roll queries, and the polish prompt only.
+- Add a `polished?: boolean` flag to `VideoForgeOutput` so the UI can show a subtle "AI-polished" pill.
 
-Register two runtime secrets via the secrets tool, with placeholder values the user can swap later:
+### 4. `src/pages/dashboard/VideoForge.tsx`
+- After `generateVideoForge(fields)` succeeds, call `supabase.functions.invoke("video-forge-polish", { body: { input, draft } })`.
+- Show "Polishing script with AI…" state with a 15s timeout.
+- On success: render polished output, mark badge "AI-polished".
+- On failure/timeout: render the deterministic draft, show a quiet "Couldn't reach AI polisher — showing fast draft" notice with a Retry polish button.
 
-- `FACELESSFORGE_BASE_URL` (placeholder: `https://stub.facelessforge.invalid`)
-- `FACELESSFORGE_API_KEY` (placeholder: `stub-not-connected`)
+### 5. Tests
+- `src/test/video-forge.test.ts`: assert no template renders the literal string `target_audience` value inside narration. Add cases for Education + Renewable Energy and Marketing + SaaS to confirm scenes are topic-true (smoke check on keywords).
+- New `src/test/video-forge.polish.test.ts`: mock `supabase.functions.invoke` and assert the page renders polished content when the function resolves, and falls back when it rejects.
 
-The edge function reads these but does not actually call out to them while in stub mode.
+## Out of scope (intentionally)
 
-## 3. Edge functions (proxy boundary)
+- No change to FacelessForge render pipeline, `/videos` flow, or distribution.
+- No change to the form fields themselves — same inputs.
+- No long-form re-architecture; same 5-scene short-form, same scene count rules.
 
-Two new functions under `supabase/functions/`. Both validate the caller's JWT, look up the asset by id, and confirm the asset belongs to `auth.uid()`. Both return JSON with CORS headers.
+## Files touched
 
-### `render-video` (POST)
+- new: `supabase/functions/video-forge-polish/index.ts`
+- new: `src/test/video-forge.polish.test.ts`
+- edit: `src/lib/video-forge.ts` (drop audience from narration templates, add `polished` flag)
+- edit: `src/pages/dashboard/VideoForge.tsx` (async polish call + UI states)
+- edit: `src/test/video-forge.test.ts` (add audience-leak guards + topic-true assertions)
+- new secret: `DEEPSEEK_API_KEY` (requested via add_secret before deploying the function)
 
-Input (validated with zod):
-```
-{ asset_id: string (uuid),
-  title: string,
-  script: string,
-  scene_breakdown: unknown[],
-  stock_footage_terms: unknown[],
-  captions: { short_caption?: string, long_caption?: string },
-  voiceover_notes: unknown }
-```
+## Technical notes
 
-Behavior (stub mode — detected when `FACELESSFORGE_API_KEY` is missing or equals `stub-not-connected`):
-1. Generate `render_job_id = 'stub_' + crypto.randomUUID()`
-2. Update `assets` row: `render_job_id = <id>`, `render_status = 'pending'`
-3. Return `{ job_id, status: 'pending', stub: true }`
-
-Real-mode branch (left in place but unreachable while secret is the placeholder): would `POST ${FACELESSFORGE_BASE_URL}/render` with `Authorization: Bearer ${FACELESSFORGE_API_KEY}` and the validated payload, then store `job_id` from the response. This branch is wired but commented as the future swap point.
-
-### `render-video-status` (GET)
-
-Input: `?job_id=...&asset_id=...` (both validated).
-
-Behavior in stub mode:
-1. Verify the asset belongs to the caller and `render_job_id` matches.
-2. Return `{ job_id, status: 'completed', video_url: null, stub: true, message: 'Render integration stub — real FacelessForge API not connected yet.' }`
-3. Do NOT write a fake URL into `rendered_video_url`. The column stays null so the UI never claims an MP4 exists.
-
-Real-mode branch: `GET ${FACELESSFORGE_BASE_URL}/jobs/${job_id}`, and on `completed` write the returned `video_url` to `assets.rendered_video_url` and `render_status = 'completed'`.
-
-Both functions deploy with default `verify_jwt = false` and validate the bearer token in code via `supabase.auth.getClaims(token)`.
-
-## 4. Frontend — `/videos` page
-
-Extend `AssetRecord` to include `render_job_id`, `rendered_video_url`, `render_status`. Update the load query.
-
-### New action button per card
-
-State machine (mutually exclusive, deterministic from the row):
-
-| Row state | Button shown | Sub-text |
-|---|---|---|
-| `render_job_id == null` | **Render video** (calls render-video) | none |
-| `render_job_id != null && rendered_video_url == null` | **Rendering…** (disabled, spinner) | "Stub: marks as complete on next poll" |
-| `rendered_video_url != null` | **MP4 attached** badge + **Download MP4** (anchor to url) | "Rendered by FacelessForge" |
-
-A persistent banner sits at the top of the page:
-
-> ⚠️ Render integration stub — real FacelessForge API not connected yet. Buttons exercise the full pipeline shape but no MP4 is produced.
-
-### Polling — client-side + resume on reload
-
-- On page mount, scan `rows` for any with `render_job_id && !rendered_video_url`. Add their ids to a `polling: Set<string>` state.
-- After clicking **Render video** for a row, add that row's id to `polling` once the job_id is returned.
-- A single `useEffect` runs `setInterval(5000)` while `polling.size > 0`. Each tick, for each polling id it calls the `render-video-status` edge function via `supabase.functions.invoke`, and on `completed` removes the id from `polling` and refreshes that row from the DB.
-- Interval is cleared on unmount and when `polling` empties.
-
-In stub mode the very first poll returns `completed` with `video_url: null`, so the UI flips from **Rendering…** back to **Render video** and the banner explains why no MP4 appeared. Critically, no fake MP4 link is ever shown.
-
-### What stays unchanged
-
-- Script download (`.txt`)
-- Captions download (`.txt`)
-- Distribution flow (modal, `distribution_tasks` insert, `trackEvent`)
-- All existing badges and metadata rows
-
-## 5. Tests
-
-Extend `src/test/video-forge.test.ts` (or add a sibling `generated-videos.render.test.tsx`) with:
-
-1. **State derivation** — pure function `deriveRenderUi(row)` that returns `'idle' | 'rendering' | 'complete'`. Unit-test the three branches.
-2. **Render click** — render `<GeneratedVideos />` with a mocked `supabase` client, click **Render video**, assert `supabase.functions.invoke('render-video', ...)` was called with `{ asset_id, title, script, scene_breakdown, stock_footage_terms, captions, voiceover_notes }`.
-3. **Stub completion** — mock the status invoke to return `{ status: 'completed', video_url: null }`, advance fake timers, assert the banner stays and the button reverts to **Render video** (no Download button appears, no MP4 claim).
-
-Existing 49 tests must continue to pass. The deterministic `video-forge.ts` generator is not touched.
-
-## 6. Validation
-
-- `bun run build` must succeed
-- `bunx vitest run` must be green (existing 49 + new render tests)
-- No edge function tests required for the stub (logic is trivial); can add later when wiring the real API.
-
----
-
-## Files changed
-
-**New**
-- `supabase/migrations/<ts>_add_render_columns_to_assets.sql`
-- `supabase/functions/render-video/index.ts`
-- `supabase/functions/render-video-status/index.ts`
-- `src/test/generated-videos.render.test.tsx`
-
-**Edited**
-- `src/pages/dashboard/GeneratedVideos.tsx` — add render button, state machine, polling, stub banner, extended select
-- `.env` is auto-managed — no manual edit
-
-**Untouched**
-- `src/lib/video-forge.ts`
-- All other engines, tests, routes
-- `src/integrations/supabase/types.ts` (auto-regenerated after migration)
-
-## What FacelessForge will need to provide later (no work now)
-
-- A `POST /render` endpoint accepting the payload above, returning `{ job_id }`
-- A `GET /jobs/:id` endpoint returning `{ status: 'pending' | 'completed' | 'failed', video_url?: string }`
-- An API key
-
-Swapping in the real integration = adding the secret values + flipping the stub-mode check in both edge functions. No frontend changes required.
+- DeepSeek API: `https://api.deepseek.com/v1/chat/completions`, model `deepseek-chat`, `response_format: { type: "json_object" }` for safe parsing.
+- Hard timeout 12s on the upstream call; total budget 15s end-to-end so the UI never hangs.
+- Server prompt enforces a strict JSON schema and word-count caps per scene (≈2.5 words per second) so polished narration still fits the timecodes.
+- No DB schema changes. Polished output is saved to `assets.content` exactly like today.
