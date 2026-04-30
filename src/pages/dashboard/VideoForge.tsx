@@ -305,16 +305,25 @@ const VideoForge = () => {
   return (
     <EngineLayout
       title="Video Forge"
-      description="Turn an idea into a production-ready video plan — script, scenes, captions, thumbnails, and a distribution playbook. Rendered MP4 export coming next."
+      description="Write a script, then render it in your browser — free, instant, no external service. Pro engines coming soon."
       actions={
         <>
+          <Select value={aspect} onValueChange={(v) => setAspect(v as AspectRatio)}>
+            <SelectTrigger className="h-9 w-[120px]" aria-label="Aspect ratio">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="9:16">9:16 Vertical</SelectItem>
+              <SelectItem value="16:9">16:9 Landscape</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={renderEngine} onValueChange={(v) => setRenderEngine(v as RenderEngine)}>
-            <SelectTrigger className="h-9 w-[170px]" aria-label="Render engine">
+            <SelectTrigger className="h-9 w-[210px]" aria-label="Render engine">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {RENDER_ENGINES.map((e) => (
-                <SelectItem key={e.value} value={e.value}>
+                <SelectItem key={e.value} value={e.value} disabled={e.disabled}>
                   {e.label}
                 </SelectItem>
               ))}
@@ -326,7 +335,11 @@ const VideoForge = () => {
           </Button>
           <Button size="sm" onClick={handleGenerate} disabled={!canGenerate || saving}>
             <Sparkles className="mr-2 h-4 w-4" />
-            {saving ? "Generating & queuing render…" : "Generate & render video"}
+            {saving
+              ? "Generating…"
+              : renderEngine === "browser-open"
+                ? "Generate script"
+                : "Generate & render video"}
           </Button>
         </>
       }
