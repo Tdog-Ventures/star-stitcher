@@ -61,6 +61,63 @@ export default function OpenSourceVideoRenderer({
   const width = isPortrait ? 1080 : 1920;
   const height = isPortrait ? 1920 : 1080;
 
+  /**
+   * Extract a small unified set of visual keywords from the FULL script so
+   * every scene pulls cohesive footage of the same subject (instead of each
+   * scene fetching a tiny chunk that produces disjointed clips).
+   *
+   * Strategy: strip stop-words, keep the most frequent meaningful tokens,
+   * pair them into 2-word phrases. Returns 3-6 phrases that we rotate
+   * through across scenes.
+   */
+  const buildUnifiedKeywords = (fullScript: string): string[] => {
+    const stop = new Set([
+      "the","a","an","and","or","but","of","to","in","on","for","with","at","by",
+      "from","as","is","are","was","were","be","been","being","it","its","this",
+      "that","these","those","i","you","he","she","we","they","them","our","your",
+      "their","my","me","us","what","which","who","when","where","why","how",
+      "can","will","would","should","could","may","might","must","do","does","did",
+      "have","has","had","not","no","so","if","then","than","just","very","more",
+      "most","some","any","all","each","every","into","over","under","about",
+      "create","make","video","second","seconds","cinematic","powerful","smooth",
+    ]);
+    const tokens = fullScript
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter((w) => w.length > 2 && !stop.has(w));
+
+    if (tokens.length === 0) return ["cinematic abstract motion"];
+
+    // Frequency-rank meaningful tokens, preserving first-seen order on ties.
+    const freq = new Map<string, { n: number; idx: number }>();
+    tokens.forEach((t, i) => {
+      const cur = freq.get(t);
+      if (cur) cur.n += 1;
+      else freq.set(t, { n: 1, idx: i });
+    });
+    const ranked = [...freq.entries()]
+      .sort((a, b) => b[1].n - a[1].n || a[1].idx - b[1].idx)
+      .map(([w]) => w);
+
+    const top = ranked.slice(0, 6);
+    if (top.length === 0) return ["cinematic abstract motion"];
+    if (top.length === 1) return [top[0], `${top[0]} closeup`, `${top[0]} motion`];
+
+    // Build cohesive 2-word phrases anchored on the strongest token.
+    const anchor = top[0];
+    const phrases = new Set<string>();
+    phrases.add(`${anchor} ${top[1]}`);
+    for (let i = 1; i < top.length; i++) {
+      phrases.add(`${anchor} ${top[i]}`);
+    }
+    // Add a couple of pair-of-secondary phrases for variety without losing theme.
+    if (top[1] && top[2]) phrases.add(`${top[1]} ${top[2]}`);
+    if (top[1] && top[3]) phrases.add(`${top[1]} ${top[3]}`);
+
+    return [...phrases].slice(0, 6);
+  };
+
   const buildFallbackScenes = (): Scene[] => {
     const words = script.trim().split(/\s+/);
     if (!words.length || (words.length === 1 && !words[0])) {
@@ -73,16 +130,19 @@ export default function OpenSourceVideoRenderer({
         },
       ];
     }
+    const unified = buildUnifiedKeywords(script);
     const chunkSize = Math.max(8, Math.ceil(words.length / 3));
     const out: Scene[] = [];
+    let k = 0;
     for (let i = 0; i < words.length; i += chunkSize) {
       const chunk = words.slice(i, i + chunkSize).join(" ");
       out.push({
         text: chunk,
-        keyword: chunk.split(/\s+/).slice(0, 4).join(" ") || "cinematic motion",
+        keyword: unified[k % unified.length],
         duration: 6,
         caption: chunk.length > 60 ? chunk.slice(0, 57) + "…" : chunk,
       });
+      k += 1;
     }
     return out;
   };
@@ -225,10 +285,18 @@ export default function OpenSourceVideoRenderer({
     setErrorMsg(null);
     setVideoUrl(null);
 
-    const scenes =
+    // Always derive a unified keyword set from the full script and rotate it
+    // across scenes — overrides any per-scene keywords from the parent so the
+    // resulting clips share a single visual subject.
+    const unifiedKeywords = buildUnifiedKeywords(script || (providedScenes ?? []).map((s) => s.text).join(" "));
+    const baseScenes =
       providedScenes && providedScenes.length > 0
         ? providedScenes
         : buildFallbackScenes();
+    const scenes: Scene[] = baseScenes.map((s, i) => ({
+      ...s,
+      keyword: unifiedKeywords[i % unifiedKeywords.length],
+    }));
 
     // Cancel any in-flight TTS.
     if (typeof speechSynthesis !== "undefined") {
