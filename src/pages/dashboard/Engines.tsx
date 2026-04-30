@@ -69,7 +69,6 @@ const ENGINES: EngineDef[] = [
     description: "Design a referral or affiliate program: partner profile, reward, enablement kit.",
     icon: Megaphone,
     to: "/engines/partner-program",
-    primary: true,
   },
 ];
 
