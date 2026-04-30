@@ -190,15 +190,28 @@ export default function OpenSourceVideoRenderer({
 
   const fetchStockClip = async (
     keyword: string,
+    sceneIdx: number,
   ): Promise<HTMLVideoElement> => {
+    const tag = `scene-${sceneIdx + 1}`;
     let stockUrl = "";
+    const fetchStart = performance.now();
+    log("info", tag, `Pexels search → "${keyword}"`);
     try {
-      const { data } = await supabase.functions.invoke("pexels-search", {
+      const { data, error } = await supabase.functions.invoke("pexels-search", {
         body: { keyword, orientation: isPortrait ? "portrait" : "landscape" },
       });
+      if (error) {
+        log("warn", tag, `pexels-search edge error: ${error.message}`);
+      }
       stockUrl = (data as { url?: string } | null)?.url ?? "";
+      const ms = Math.round(performance.now() - fetchStart);
+      if (stockUrl) {
+        log("success", tag, `Pexels hit (${ms}ms): ${stockUrl.slice(0, 70)}…`);
+      } else {
+        log("warn", tag, `Pexels returned no url (${ms}ms) — will use fallback`);
+      }
     } catch (e) {
-      console.warn("[open-source-renderer] pexels lookup failed", e);
+      log("warn", tag, `Pexels lookup threw: ${(e as Error).message}`);
     }
 
     const videoEl = document.createElement("video");
@@ -206,21 +219,35 @@ export default function OpenSourceVideoRenderer({
     videoEl.muted = true;
     videoEl.loop = true;
     videoEl.playsInline = true;
-    videoEl.src = stockUrl || FALLBACK_VIDEO;
+    const initialSrc = stockUrl || FALLBACK_VIDEO;
+    if (!stockUrl) log("warn", tag, "Using fallback BigBuckBunny clip");
+    videoEl.src = initialSrc;
 
+    const loadStart = performance.now();
     await new Promise<void>((resolve) => {
       const onReady = () => {
         videoEl.removeEventListener("loadeddata", onReady);
         videoEl.removeEventListener("error", onError);
+        const ms = Math.round(performance.now() - loadStart);
+        log(
+          "success",
+          tag,
+          `Clip loaded (${ms}ms) ${videoEl.videoWidth}×${videoEl.videoHeight}`,
+        );
         resolve();
       };
       const onError = () => {
         videoEl.removeEventListener("loadeddata", onReady);
         videoEl.removeEventListener("error", onError);
-        // Fall back if remote clip failed.
+        log("error", tag, `Clip failed to load: ${videoEl.src.slice(0, 60)}…`);
         if (videoEl.src !== FALLBACK_VIDEO) {
+          log("info", tag, "Retrying with fallback clip");
           videoEl.src = FALLBACK_VIDEO;
           videoEl.addEventListener("loadeddata", onReady, { once: true });
+          videoEl.addEventListener("error", () => {
+            log("error", tag, "Fallback clip also failed");
+            resolve();
+          }, { once: true });
         } else {
           resolve();
         }
@@ -231,8 +258,8 @@ export default function OpenSourceVideoRenderer({
 
     try {
       await videoEl.play();
-    } catch {
-      /* autoplay rejection is fine — captureStream still works once playing */
+    } catch (e) {
+      log("warn", tag, `videoEl.play() rejected: ${(e as Error).message}`);
     }
     return videoEl;
   };
