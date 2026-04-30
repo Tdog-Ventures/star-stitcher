@@ -440,6 +440,46 @@ const VideoForge = () => {
         <div className="rounded-lg border border-dashed border-primary/30 bg-primary/5 p-4 text-sm text-foreground">
           <p className="font-medium">Manual-first, instant output.</p>
           <p className="mt-1 text-muted-foreground">
+            Fill the form, hit Generate. With <strong>Browser Open (Free)</strong> the script renders into a real <code>.webm</code> video right here in your browser — no external service, no waiting in a queue.
+          </p>
+        </div>
+      )}
+
+      {/* Browser-side renderer — appears once a script exists and the engine is browser-open. */}
+      {output && renderEngine === "browser-open" ? (
+        <FormSection
+          title="Render video in your browser"
+          description="Free, open-source, no external service. Pexels stock footage + your browser's voice + Ken Burns motion → downloadable .webm."
+        >
+          <OpenSourceVideoRenderer
+            script={output.full_script}
+            scenes={output.scene_breakdown.map((s) => ({
+              text: s.narration,
+              keyword: s.b_roll_or_stock_query,
+              duration:
+                typeof s.duration_seconds === "number" && s.duration_seconds > 0
+                  ? Math.min(15, Math.max(3, s.duration_seconds))
+                  : 6,
+              caption: s.on_screen_text || s.narration.slice(0, 80),
+            }))}
+            aspect={aspect}
+            title={output.video_title}
+            onComplete={(url) => {
+              toast({
+                title: "Video saved to Generated Videos",
+                description: "Open /videos to preview, download, or schedule distribution.",
+              });
+              void url;
+            }}
+          />
+        </FormSection>
+      ) : null}
+
+      {/* Original placeholder (kept logic identical to before for non-browser-open engines). */}
+      {false ? (
+        <div>
+          <p className="font-medium">Manual-first, instant output.</p>
+          <p className="mt-1 text-muted-foreground">
             Fill the form, hit Generate. The plan is deterministic and editable in the asset view. We then queue an MP4 render with FacelessForge automatically and take you to Generated Videos to watch progress.
           </p>
         </div>
