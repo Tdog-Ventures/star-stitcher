@@ -1,5 +1,6 @@
-import { useRef, useState } from "react";
-import { Loader2, Download, Sparkles, RotateCcw } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
+import { Loader2, Download, Sparkles, RotateCcw, Bug, Copy, Trash2 } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -56,6 +57,46 @@ export default function OpenSourceVideoRenderer({
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const cancelRef = useRef(false);
+
+  // ---- Debug overlay state -------------------------------------------------
+  type LogLevel = "info" | "warn" | "error" | "success";
+  interface DebugLog {
+    t: number; // ms since render start
+    level: LogLevel;
+    tag: string;
+    msg: string;
+  }
+  const [debugLogs, setDebugLogs] = useState<DebugLog[]>([]);
+  const [showDebug, setShowDebug] = useState(true);
+  const renderStartRef = useRef<number>(0);
+
+  const log = useCallback((level: LogLevel, tag: string, msg: string) => {
+    const entry: DebugLog = {
+      t: renderStartRef.current ? performance.now() - renderStartRef.current : 0,
+      level,
+      tag,
+      msg,
+    };
+    // Mirror to console for full stack traces.
+    const prefix = `[video-forge:${tag}]`;
+    if (level === "error") console.error(prefix, msg);
+    else if (level === "warn") console.warn(prefix, msg);
+    else console.log(prefix, msg);
+    setDebugLogs((prev) => [...prev, entry]);
+  }, []);
+
+  const clearLogs = () => setDebugLogs([]);
+  const copyLogs = async () => {
+    const text = debugLogs
+      .map((l) => `[${(l.t / 1000).toFixed(2)}s] ${l.level.toUpperCase()} ${l.tag}: ${l.msg}`)
+      .join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("Debug logs copied");
+    } catch {
+      toast.error("Copy failed");
+    }
+  };
 
   const isPortrait = aspect === "9:16";
   const width = isPortrait ? 1080 : 1920;
@@ -149,15 +190,28 @@ export default function OpenSourceVideoRenderer({
 
   const fetchStockClip = async (
     keyword: string,
+    sceneIdx: number,
   ): Promise<HTMLVideoElement> => {
+    const tag = `scene-${sceneIdx + 1}`;
     let stockUrl = "";
+    const fetchStart = performance.now();
+    log("info", tag, `Pexels search → "${keyword}"`);
     try {
-      const { data } = await supabase.functions.invoke("pexels-search", {
+      const { data, error } = await supabase.functions.invoke("pexels-search", {
         body: { keyword, orientation: isPortrait ? "portrait" : "landscape" },
       });
+      if (error) {
+        log("warn", tag, `pexels-search edge error: ${error.message}`);
+      }
       stockUrl = (data as { url?: string } | null)?.url ?? "";
+      const ms = Math.round(performance.now() - fetchStart);
+      if (stockUrl) {
+        log("success", tag, `Pexels hit (${ms}ms): ${stockUrl.slice(0, 70)}…`);
+      } else {
+        log("warn", tag, `Pexels returned no url (${ms}ms) — will use fallback`);
+      }
     } catch (e) {
-      console.warn("[open-source-renderer] pexels lookup failed", e);
+      log("warn", tag, `Pexels lookup threw: ${(e as Error).message}`);
     }
 
     const videoEl = document.createElement("video");
@@ -165,21 +219,35 @@ export default function OpenSourceVideoRenderer({
     videoEl.muted = true;
     videoEl.loop = true;
     videoEl.playsInline = true;
-    videoEl.src = stockUrl || FALLBACK_VIDEO;
+    const initialSrc = stockUrl || FALLBACK_VIDEO;
+    if (!stockUrl) log("warn", tag, "Using fallback BigBuckBunny clip");
+    videoEl.src = initialSrc;
 
+    const loadStart = performance.now();
     await new Promise<void>((resolve) => {
       const onReady = () => {
         videoEl.removeEventListener("loadeddata", onReady);
         videoEl.removeEventListener("error", onError);
+        const ms = Math.round(performance.now() - loadStart);
+        log(
+          "success",
+          tag,
+          `Clip loaded (${ms}ms) ${videoEl.videoWidth}×${videoEl.videoHeight}`,
+        );
         resolve();
       };
       const onError = () => {
         videoEl.removeEventListener("loadeddata", onReady);
         videoEl.removeEventListener("error", onError);
-        // Fall back if remote clip failed.
+        log("error", tag, `Clip failed to load: ${videoEl.src.slice(0, 60)}…`);
         if (videoEl.src !== FALLBACK_VIDEO) {
+          log("info", tag, "Retrying with fallback clip");
           videoEl.src = FALLBACK_VIDEO;
           videoEl.addEventListener("loadeddata", onReady, { once: true });
+          videoEl.addEventListener("error", () => {
+            log("error", tag, "Fallback clip also failed");
+            resolve();
+          }, { once: true });
         } else {
           resolve();
         }
@@ -190,8 +258,8 @@ export default function OpenSourceVideoRenderer({
 
     try {
       await videoEl.play();
-    } catch {
-      /* autoplay rejection is fine — captureStream still works once playing */
+    } catch (e) {
+      log("warn", tag, `videoEl.play() rejected: ${(e as Error).message}`);
     }
     return videoEl;
   };
@@ -284,11 +352,16 @@ export default function OpenSourceVideoRenderer({
     setProgress(2);
     setErrorMsg(null);
     setVideoUrl(null);
+    setDebugLogs([]);
+    renderStartRef.current = performance.now();
+    log("info", "init", `Aspect ${aspect} · canvas ${width}×${height}`);
+    log("info", "init", `User: ${user.id.slice(0, 8)}…`);
 
     // Always derive a unified keyword set from the full script and rotate it
     // across scenes — overrides any per-scene keywords from the parent so the
     // resulting clips share a single visual subject.
     const unifiedKeywords = buildUnifiedKeywords(script || (providedScenes ?? []).map((s) => s.text).join(" "));
+    log("info", "keywords", `Unified set [${unifiedKeywords.length}]: ${unifiedKeywords.join(" | ")}`);
     const baseScenes =
       providedScenes && providedScenes.length > 0
         ? providedScenes
@@ -297,10 +370,23 @@ export default function OpenSourceVideoRenderer({
       ...s,
       keyword: unifiedKeywords[i % unifiedKeywords.length],
     }));
+    const targetDuration = scenes.reduce((acc, s) => acc + s.duration, 0);
+    log(
+      "info",
+      "scenes",
+      `${scenes.length} scenes · target duration ${targetDuration.toFixed(1)}s`,
+    );
 
     // Cancel any in-flight TTS.
     if (typeof speechSynthesis !== "undefined") {
       speechSynthesis.cancel();
+      log(
+        "info",
+        "tts",
+        `speechSynthesis available · ${speechSynthesis.getVoices().length} voices`,
+      );
+    } else {
+      log("warn", "tts", "speechSynthesis API not available in this browser");
     }
 
     const canvas = document.createElement("canvas");
@@ -310,6 +396,7 @@ export default function OpenSourceVideoRenderer({
     if (!ctx) {
       setStatus("failed");
       setErrorMsg("Canvas not supported in this browser");
+      log("error", "canvas", "getContext('2d') returned null");
       return;
     }
 
@@ -332,18 +419,24 @@ export default function OpenSourceVideoRenderer({
     if (!mimeType) {
       setStatus("failed");
       setErrorMsg("Your browser doesn't support MediaRecorder webm output. Try Chrome.");
+      log("error", "recorder", "No supported webm MIME type found");
       return;
     }
+    log("info", "recorder", `MIME: ${mimeType}`);
 
     const recorder = new MediaRecorder(stream, { mimeType });
     const chunks: Blob[] = [];
     recorder.ondataavailable = (e) => {
       if (e.data.size > 0) chunks.push(e.data);
     };
+    recorder.onerror = (e) => {
+      log("error", "recorder", `MediaRecorder error: ${(e as ErrorEvent).message ?? "unknown"}`);
+    };
 
     setStatus("rendering");
     setProgress(8);
     recorder.start(250);
+    log("info", "recorder", "Recording started (timeslice 250ms)");
 
     // Animation loop driven by rAF; we switch the active video as scenes change.
     let activeVideo: HTMLVideoElement | null = null;
@@ -367,12 +460,18 @@ export default function OpenSourceVideoRenderer({
 
     try {
       for (let i = 0; i < scenes.length; i++) {
-        if (cancelRef.current) break;
+        if (cancelRef.current) {
+          log("warn", "loop", `Cancelled before scene ${i + 1}`);
+          break;
+        }
         const scene = scenes[i];
+        log(
+          "info",
+          `scene-${i + 1}`,
+          `Start (${scene.duration}s) caption="${scene.caption.slice(0, 40)}"`,
+        );
 
-        // Pre-fetch the next scene's clip while this one plays would be ideal,
-        // but keeping it sequential keeps the code simple and reliable.
-        const videoEl = await fetchStockClip(scene.keyword);
+        const videoEl = await fetchStockClip(scene.keyword, i);
         // Detach previous video element from playback.
         if (activeVideo && activeVideo !== videoEl) {
           try {
@@ -393,8 +492,18 @@ export default function OpenSourceVideoRenderer({
           u.rate = 0.95;
           u.pitch = 1.0;
           u.volume = 1.0;
+          u.onstart = () => log("info", `tts-${i + 1}`, "TTS started");
+          u.onend = () =>
+            log("info", `tts-${i + 1}`, "TTS ended");
+          u.onerror = (ev) =>
+            log("error", `tts-${i + 1}`, `TTS error: ${ev.error ?? "unknown"}`);
           // Don't await — we time the scene by duration, not by TTS finishing.
           speechSynthesis.speak(u);
+          log(
+            "info",
+            `tts-${i + 1}`,
+            `Queued utterance (${scene.text.length} chars) — note: cannot be captured into .webm`,
+          );
         }
 
         // Hold this scene for its duration.
@@ -405,15 +514,19 @@ export default function OpenSourceVideoRenderer({
         // Progress: 10% setup → 85% render → 100% upload.
         const sceneProgress = 10 + Math.round(((i + 1) / scenes.length) * 75);
         setProgress(sceneProgress);
+        log("success", `scene-${i + 1}`, `Done · progress ${sceneProgress}%`);
       }
     } catch (e) {
-      console.error("[open-source-renderer] scene loop failed", e);
+      log("error", "loop", `Scene loop threw: ${(e as Error).message}`);
     }
 
     cancelRef.current = true; // stops drawLoop
     if (typeof speechSynthesis !== "undefined") {
       speechSynthesis.cancel();
     }
+
+    const elapsedRender = (performance.now() - renderStartRef.current) / 1000;
+    log("info", "recorder", `Stopping recorder · elapsed ${elapsedRender.toFixed(2)}s`);
 
     // Stop recorder and wait for the final blob.
     const blob: Blob = await new Promise((resolve) => {
@@ -424,17 +537,46 @@ export default function OpenSourceVideoRenderer({
       setTimeout(() => {
         try {
           recorder.stop();
-        } catch {
-          /* ignore */
+        } catch (e) {
+          log("warn", "recorder", `recorder.stop() threw: ${(e as Error).message}`);
         }
       }, 200);
     });
+
+    log(
+      "info",
+      "recorder",
+      `Blob ready · ${(blob.size / 1024).toFixed(1)} KB · ${chunks.length} chunks`,
+    );
 
     setStatus("uploading");
     setProgress(90);
 
     const localUrl = URL.createObjectURL(blob);
     setVideoUrl(localUrl);
+
+    // Probe final duration off the local blob so we can flag mismatches early.
+    try {
+      const probe = document.createElement("video");
+      probe.preload = "metadata";
+      probe.src = localUrl;
+      await new Promise<void>((resolve) => {
+        probe.addEventListener("loadedmetadata", () => resolve(), { once: true });
+        probe.addEventListener("error", () => resolve(), { once: true });
+        setTimeout(resolve, 1500);
+      });
+      const actual = isFinite(probe.duration) ? probe.duration : -1;
+      const target = scenes.reduce((a, s) => a + s.duration, 0);
+      if (actual < 0) {
+        log("warn", "duration", "Could not read blob duration (Infinity/NaN — common with webm)");
+      } else if (Math.abs(actual - target) > 1.0) {
+        log("error", "duration", `MISMATCH actual ${actual.toFixed(2)}s vs target ${target}s`);
+      } else {
+        log("success", "duration", `actual ${actual.toFixed(2)}s ≈ target ${target}s`);
+      }
+    } catch (e) {
+      log("warn", "duration", `Probe failed: ${(e as Error).message}`);
+    }
 
     // Upload to Storage. File path is namespaced by user id so the per-user
     // RLS policy (`auth.uid()::text = (storage.foldername(name))[1]`) allows it.
@@ -444,6 +586,7 @@ export default function OpenSourceVideoRenderer({
         : Date.now().toString(36)
     }`;
     const path = `${user.id}/${jobId}.webm`;
+    log("info", "upload", `Uploading to videos/${path}`);
 
     const { error: uploadError } = await supabase.storage
       .from("videos")
@@ -453,12 +596,13 @@ export default function OpenSourceVideoRenderer({
       });
 
     if (uploadError) {
-      console.error("[open-source-renderer] upload failed", uploadError);
+      log("error", "upload", uploadError.message);
       setStatus("failed");
       setErrorMsg(`Upload failed: ${uploadError.message}. Video is available locally below.`);
       toast.error("Upload failed — video saved locally only");
       return;
     }
+    log("success", "upload", "Uploaded to Storage");
 
     const {
       data: { publicUrl },
@@ -485,11 +629,12 @@ export default function OpenSourceVideoRenderer({
     setStatus("done");
 
     if (insertError) {
-      console.error("[open-source-renderer] insert failed", insertError);
+      log("error", "asset", `assets insert failed: ${insertError.message}`);
       toast.error("Render saved to Storage, but Generated Videos row failed");
       return;
     }
 
+    log("success", "asset", `assets row ${asset!.id} created`);
     toast.success("Video ready — saved to Generated Videos");
     onComplete?.(publicUrl, asset!.id);
   };
@@ -565,6 +710,64 @@ export default function OpenSourceVideoRenderer({
           </div>
         </div>
       )}
+
+      {/* Debug overlay — always rendered so users can capture failures.
+          Shows scene fetch, clip load, TTS, recorder, duration, upload events. */}
+      <div className="rounded-xl border border-border bg-muted/30">
+        <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
+          <button
+            type="button"
+            onClick={() => setShowDebug((v) => !v)}
+            className="flex items-center gap-2 text-xs font-medium text-foreground hover:text-primary"
+          >
+            <Bug className="h-3.5 w-3.5" />
+            Debug log ({debugLogs.length})
+            <span className="text-muted-foreground">{showDebug ? "▾" : "▸"}</span>
+          </button>
+          {showDebug && debugLogs.length > 0 && (
+            <div className="flex gap-1">
+              <Button size="sm" variant="ghost" className="h-7 px-2" onClick={copyLogs}>
+                <Copy className="mr-1 h-3 w-3" /> Copy
+              </Button>
+              <Button size="sm" variant="ghost" className="h-7 px-2" onClick={clearLogs}>
+                <Trash2 className="mr-1 h-3 w-3" /> Clear
+              </Button>
+            </div>
+          )}
+        </div>
+        {showDebug && (
+          <ScrollArea className="h-56">
+            <div className="space-y-0.5 px-3 py-2 font-mono text-[11px] leading-relaxed">
+              {debugLogs.length === 0 && (
+                <p className="text-muted-foreground">
+                  No events yet. Hit Generate to start capturing scene fetch, clip load,
+                  audio, recorder and duration events.
+                </p>
+              )}
+              {debugLogs.map((l, i) => {
+                const color =
+                  l.level === "error"
+                    ? "text-destructive"
+                    : l.level === "warn"
+                    ? "text-yellow-500"
+                    : l.level === "success"
+                    ? "text-emerald-500"
+                    : "text-muted-foreground";
+                return (
+                  <div key={i} className="flex gap-2">
+                    <span className="w-12 shrink-0 text-muted-foreground/70">
+                      {(l.t / 1000).toFixed(2)}s
+                    </span>
+                    <span className={`w-16 shrink-0 ${color}`}>{l.level}</span>
+                    <span className="w-20 shrink-0 text-foreground/80">{l.tag}</span>
+                    <span className="text-foreground/90 break-all">{l.msg}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </ScrollArea>
+        )}
+      </div>
     </div>
   );
 }
