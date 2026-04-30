@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/providers/AuthProvider";
 import { trackEvent } from "@/lib/analytics";
 import { EngineLayout, FormSection, PreviewCard } from "@/components/engine";
+import OpenSourceVideoRenderer from "@/components/video-forge/OpenSourceVideoRenderer";
 import {
   VideoForgeHistory,
   type ForgeVariant,
@@ -47,6 +48,8 @@ import {
   type VideoTone,
 } from "@/lib/video-forge";
 import { buildEnvelope } from "@/lib/engines/contracts";
+
+type AspectRatio = "9:16" | "16:9";
 
 const EMPTY: VideoForgeInput = {
   video_goal: "marketing",
@@ -84,7 +87,9 @@ const VideoForge = () => {
   const [history, setHistory] = useState<VideoForgeHistoryEntry[]>([]);
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
   const [selectedVariant, setSelectedVariant] = useState<ForgeVariant>("deterministic");
-  const [renderEngine, setRenderEngine] = useState<RenderEngine>("videoforge");
+  const [renderEngine, setRenderEngine] = useState<RenderEngine>("browser-open");
+  const [aspect, setAspect] = useState<AspectRatio>("9:16");
+
 
   const set = <K extends keyof VideoForgeInput>(key: K, value: VideoForgeInput[K]) =>
     setFields((prev) => ({ ...prev, [key]: value }));
