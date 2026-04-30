@@ -130,16 +130,19 @@ export default function OpenSourceVideoRenderer({
         },
       ];
     }
+    const unified = buildUnifiedKeywords(script);
     const chunkSize = Math.max(8, Math.ceil(words.length / 3));
     const out: Scene[] = [];
+    let k = 0;
     for (let i = 0; i < words.length; i += chunkSize) {
       const chunk = words.slice(i, i + chunkSize).join(" ");
       out.push({
         text: chunk,
-        keyword: chunk.split(/\s+/).slice(0, 4).join(" ") || "cinematic motion",
+        keyword: unified[k % unified.length],
         duration: 6,
         caption: chunk.length > 60 ? chunk.slice(0, 57) + "…" : chunk,
       });
+      k += 1;
     }
     return out;
   };
