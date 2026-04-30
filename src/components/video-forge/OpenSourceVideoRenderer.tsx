@@ -460,12 +460,18 @@ export default function OpenSourceVideoRenderer({
 
     try {
       for (let i = 0; i < scenes.length; i++) {
-        if (cancelRef.current) break;
+        if (cancelRef.current) {
+          log("warn", "loop", `Cancelled before scene ${i + 1}`);
+          break;
+        }
         const scene = scenes[i];
+        log(
+          "info",
+          `scene-${i + 1}`,
+          `Start (${scene.duration}s) caption="${scene.caption.slice(0, 40)}"`,
+        );
 
-        // Pre-fetch the next scene's clip while this one plays would be ideal,
-        // but keeping it sequential keeps the code simple and reliable.
-        const videoEl = await fetchStockClip(scene.keyword);
+        const videoEl = await fetchStockClip(scene.keyword, i);
         // Detach previous video element from playback.
         if (activeVideo && activeVideo !== videoEl) {
           try {
@@ -486,8 +492,18 @@ export default function OpenSourceVideoRenderer({
           u.rate = 0.95;
           u.pitch = 1.0;
           u.volume = 1.0;
+          u.onstart = () => log("info", `tts-${i + 1}`, "TTS started");
+          u.onend = () =>
+            log("info", `tts-${i + 1}`, "TTS ended");
+          u.onerror = (ev) =>
+            log("error", `tts-${i + 1}`, `TTS error: ${ev.error ?? "unknown"}`);
           // Don't await — we time the scene by duration, not by TTS finishing.
           speechSynthesis.speak(u);
+          log(
+            "info",
+            `tts-${i + 1}`,
+            `Queued utterance (${scene.text.length} chars) — note: cannot be captured into .webm`,
+          );
         }
 
         // Hold this scene for its duration.
@@ -498,15 +514,19 @@ export default function OpenSourceVideoRenderer({
         // Progress: 10% setup → 85% render → 100% upload.
         const sceneProgress = 10 + Math.round(((i + 1) / scenes.length) * 75);
         setProgress(sceneProgress);
+        log("success", `scene-${i + 1}`, `Done · progress ${sceneProgress}%`);
       }
     } catch (e) {
-      console.error("[open-source-renderer] scene loop failed", e);
+      log("error", "loop", `Scene loop threw: ${(e as Error).message}`);
     }
 
     cancelRef.current = true; // stops drawLoop
     if (typeof speechSynthesis !== "undefined") {
       speechSynthesis.cancel();
     }
+
+    const elapsedRender = (performance.now() - renderStartRef.current) / 1000;
+    log("info", "recorder", `Stopping recorder · elapsed ${elapsedRender.toFixed(2)}s`);
 
     // Stop recorder and wait for the final blob.
     const blob: Blob = await new Promise((resolve) => {
@@ -517,17 +537,46 @@ export default function OpenSourceVideoRenderer({
       setTimeout(() => {
         try {
           recorder.stop();
-        } catch {
-          /* ignore */
+        } catch (e) {
+          log("warn", "recorder", `recorder.stop() threw: ${(e as Error).message}`);
         }
       }, 200);
     });
+
+    log(
+      "info",
+      "recorder",
+      `Blob ready · ${(blob.size / 1024).toFixed(1)} KB · ${chunks.length} chunks`,
+    );
 
     setStatus("uploading");
     setProgress(90);
 
     const localUrl = URL.createObjectURL(blob);
     setVideoUrl(localUrl);
+
+    // Probe final duration off the local blob so we can flag mismatches early.
+    try {
+      const probe = document.createElement("video");
+      probe.preload = "metadata";
+      probe.src = localUrl;
+      await new Promise<void>((resolve) => {
+        probe.addEventListener("loadedmetadata", () => resolve(), { once: true });
+        probe.addEventListener("error", () => resolve(), { once: true });
+        setTimeout(resolve, 1500);
+      });
+      const actual = isFinite(probe.duration) ? probe.duration : -1;
+      const target = scenes.reduce((a, s) => a + s.duration, 0);
+      if (actual < 0) {
+        log("warn", "duration", "Could not read blob duration (Infinity/NaN — common with webm)");
+      } else if (Math.abs(actual - target) > 1.0) {
+        log("error", "duration", `MISMATCH actual ${actual.toFixed(2)}s vs target ${target}s`);
+      } else {
+        log("success", "duration", `actual ${actual.toFixed(2)}s ≈ target ${target}s`);
+      }
+    } catch (e) {
+      log("warn", "duration", `Probe failed: ${(e as Error).message}`);
+    }
 
     // Upload to Storage. File path is namespaced by user id so the per-user
     // RLS policy (`auth.uid()::text = (storage.foldername(name))[1]`) allows it.
@@ -537,6 +586,7 @@ export default function OpenSourceVideoRenderer({
         : Date.now().toString(36)
     }`;
     const path = `${user.id}/${jobId}.webm`;
+    log("info", "upload", `Uploading to videos/${path}`);
 
     const { error: uploadError } = await supabase.storage
       .from("videos")
@@ -546,12 +596,13 @@ export default function OpenSourceVideoRenderer({
       });
 
     if (uploadError) {
-      console.error("[open-source-renderer] upload failed", uploadError);
+      log("error", "upload", uploadError.message);
       setStatus("failed");
       setErrorMsg(`Upload failed: ${uploadError.message}. Video is available locally below.`);
       toast.error("Upload failed — video saved locally only");
       return;
     }
+    log("success", "upload", "Uploaded to Storage");
 
     const {
       data: { publicUrl },
@@ -578,11 +629,12 @@ export default function OpenSourceVideoRenderer({
     setStatus("done");
 
     if (insertError) {
-      console.error("[open-source-renderer] insert failed", insertError);
+      log("error", "asset", `assets insert failed: ${insertError.message}`);
       toast.error("Render saved to Storage, but Generated Videos row failed");
       return;
     }
 
+    log("success", "asset", `assets row ${asset!.id} created`);
     toast.success("Video ready — saved to Generated Videos");
     onComplete?.(publicUrl, asset!.id);
   };
