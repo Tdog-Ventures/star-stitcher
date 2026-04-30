@@ -210,6 +210,17 @@ const VideoForge = () => {
 
     setSavedAssetId(asset.id);
 
+    // Browser-open engine: skip the FacelessForge call entirely. The inline
+    // <OpenSourceVideoRenderer/> below will render in-browser when the user
+    // clicks its Generate button. The asset is already saved as a script.
+    if (renderEngine === "browser-open") {
+      toast({
+        title: "Script saved",
+        description: "Click \"Generate video (free)\" below to render it in your browser.",
+      });
+      return;
+    }
+
     // Auto-queue an MP4 render with FacelessForge using the active variant,
     // then send the user to /videos to watch progress. Manual-first principle
     // is preserved — the form was filled by hand; this just removes the extra
