@@ -710,6 +710,64 @@ export default function OpenSourceVideoRenderer({
           </div>
         </div>
       )}
+
+      {/* Debug overlay — always rendered so users can capture failures.
+          Shows scene fetch, clip load, TTS, recorder, duration, upload events. */}
+      <div className="rounded-xl border border-border bg-muted/30">
+        <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
+          <button
+            type="button"
+            onClick={() => setShowDebug((v) => !v)}
+            className="flex items-center gap-2 text-xs font-medium text-foreground hover:text-primary"
+          >
+            <Bug className="h-3.5 w-3.5" />
+            Debug log ({debugLogs.length})
+            <span className="text-muted-foreground">{showDebug ? "▾" : "▸"}</span>
+          </button>
+          {showDebug && debugLogs.length > 0 && (
+            <div className="flex gap-1">
+              <Button size="sm" variant="ghost" className="h-7 px-2" onClick={copyLogs}>
+                <Copy className="mr-1 h-3 w-3" /> Copy
+              </Button>
+              <Button size="sm" variant="ghost" className="h-7 px-2" onClick={clearLogs}>
+                <Trash2 className="mr-1 h-3 w-3" /> Clear
+              </Button>
+            </div>
+          )}
+        </div>
+        {showDebug && (
+          <ScrollArea className="h-56">
+            <div className="space-y-0.5 px-3 py-2 font-mono text-[11px] leading-relaxed">
+              {debugLogs.length === 0 && (
+                <p className="text-muted-foreground">
+                  No events yet. Hit Generate to start capturing scene fetch, clip load,
+                  audio, recorder and duration events.
+                </p>
+              )}
+              {debugLogs.map((l, i) => {
+                const color =
+                  l.level === "error"
+                    ? "text-destructive"
+                    : l.level === "warn"
+                    ? "text-yellow-500"
+                    : l.level === "success"
+                    ? "text-emerald-500"
+                    : "text-muted-foreground";
+                return (
+                  <div key={i} className="flex gap-2">
+                    <span className="w-12 shrink-0 text-muted-foreground/70">
+                      {(l.t / 1000).toFixed(2)}s
+                    </span>
+                    <span className={`w-16 shrink-0 ${color}`}>{l.level}</span>
+                    <span className="w-20 shrink-0 text-foreground/80">{l.tag}</span>
+                    <span className="text-foreground/90 break-all">{l.msg}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </ScrollArea>
+        )}
+      </div>
     </div>
   );
 }
