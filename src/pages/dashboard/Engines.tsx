@@ -30,9 +30,10 @@ const ENGINES: EngineDef[] = [
   {
     key: "video-forge",
     name: "Video Forge",
-    description: "Turn a topic into a structured script: hook, scenes, captions, hashtags.",
+    description: "Browser-native video renderer. Free. Pexels footage + voiceover + captions → instant .webm.",
     icon: Video,
     to: "/engines/video-forge",
+    primary: true,
   },
   {
     key: "creator-blueprint",
@@ -68,7 +69,6 @@ const ENGINES: EngineDef[] = [
     description: "Design a referral or affiliate program: partner profile, reward, enablement kit.",
     icon: Megaphone,
     to: "/engines/partner-program",
-    primary: true,
   },
 ];
 

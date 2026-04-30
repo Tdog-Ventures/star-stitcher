@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/providers/AuthProvider";
 import { trackEvent } from "@/lib/analytics";
 import { EngineLayout, FormSection, PreviewCard } from "@/components/engine";
+import OpenSourceVideoRenderer from "@/components/video-forge/OpenSourceVideoRenderer";
 import {
   VideoForgeHistory,
   type ForgeVariant,
@@ -47,6 +48,8 @@ import {
   type VideoTone,
 } from "@/lib/video-forge";
 import { buildEnvelope } from "@/lib/engines/contracts";
+
+type AspectRatio = "9:16" | "16:9";
 
 const EMPTY: VideoForgeInput = {
   video_goal: "marketing",
@@ -84,7 +87,9 @@ const VideoForge = () => {
   const [history, setHistory] = useState<VideoForgeHistoryEntry[]>([]);
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
   const [selectedVariant, setSelectedVariant] = useState<ForgeVariant>("deterministic");
-  const [renderEngine, setRenderEngine] = useState<RenderEngine>("videoforge");
+  const [renderEngine, setRenderEngine] = useState<RenderEngine>("browser-open");
+  const [aspect, setAspect] = useState<AspectRatio>("9:16");
+
 
   const set = <K extends keyof VideoForgeInput>(key: K, value: VideoForgeInput[K]) =>
     setFields((prev) => ({ ...prev, [key]: value }));
@@ -205,6 +210,17 @@ const VideoForge = () => {
 
     setSavedAssetId(asset.id);
 
+    // Browser-open engine: skip the FacelessForge call entirely. The inline
+    // <OpenSourceVideoRenderer/> below will render in-browser when the user
+    // clicks its Generate button. The asset is already saved as a script.
+    if (renderEngine === "browser-open") {
+      toast({
+        title: "Script saved",
+        description: "Click \"Generate video (free)\" below to render it in your browser.",
+      });
+      return;
+    }
+
     // Auto-queue an MP4 render with FacelessForge using the active variant,
     // then send the user to /videos to watch progress. Manual-first principle
     // is preserved — the form was filled by hand; this just removes the extra
@@ -289,16 +305,25 @@ const VideoForge = () => {
   return (
     <EngineLayout
       title="Video Forge"
-      description="Turn an idea into a production-ready video plan — script, scenes, captions, thumbnails, and a distribution playbook. Rendered MP4 export coming next."
+      description="Write a script, then render it in your browser — free, instant, no external service. Pro engines coming soon."
       actions={
         <>
+          <Select value={aspect} onValueChange={(v) => setAspect(v as AspectRatio)}>
+            <SelectTrigger className="h-9 w-[120px]" aria-label="Aspect ratio">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="9:16">9:16 Vertical</SelectItem>
+              <SelectItem value="16:9">16:9 Landscape</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={renderEngine} onValueChange={(v) => setRenderEngine(v as RenderEngine)}>
-            <SelectTrigger className="h-9 w-[170px]" aria-label="Render engine">
+            <SelectTrigger className="h-9 w-[210px]" aria-label="Render engine">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {RENDER_ENGINES.map((e) => (
-                <SelectItem key={e.value} value={e.value}>
+                <SelectItem key={e.value} value={e.value} disabled={e.disabled}>
                   {e.label}
                 </SelectItem>
               ))}
@@ -310,7 +335,11 @@ const VideoForge = () => {
           </Button>
           <Button size="sm" onClick={handleGenerate} disabled={!canGenerate || saving}>
             <Sparkles className="mr-2 h-4 w-4" />
-            {saving ? "Generating & queuing render…" : "Generate & render video"}
+            {saving
+              ? "Generating…"
+              : renderEngine === "browser-open"
+                ? "Generate script"
+                : "Generate & render video"}
           </Button>
         </>
       }
@@ -411,10 +440,41 @@ const VideoForge = () => {
         <div className="rounded-lg border border-dashed border-primary/30 bg-primary/5 p-4 text-sm text-foreground">
           <p className="font-medium">Manual-first, instant output.</p>
           <p className="mt-1 text-muted-foreground">
-            Fill the form, hit Generate. The plan is deterministic and editable in the asset view. We then queue an MP4 render with FacelessForge automatically and take you to Generated Videos to watch progress.
+            Fill the form, hit Generate. With <strong>Browser Open (Free)</strong> the script renders into a real <code>.webm</code> video right here in your browser — no external service, no waiting in a queue.
           </p>
         </div>
       )}
+
+      {/* Browser-side renderer — appears once a script exists and the engine is browser-open. */}
+      {output && renderEngine === "browser-open" ? (
+        <FormSection
+          title="Render video in your browser"
+          description="Free, open-source, no external service. Pexels stock footage + your browser's voice + Ken Burns motion → downloadable .webm."
+        >
+          <OpenSourceVideoRenderer
+            script={output.full_script}
+            scenes={output.scene_breakdown.map((s) => ({
+              text: s.narration,
+              keyword: s.b_roll_or_stock_query,
+              duration:
+                typeof s.duration_seconds === "number" && s.duration_seconds > 0
+                  ? Math.min(15, Math.max(3, s.duration_seconds))
+                  : 6,
+              caption: s.on_screen_text || s.narration.slice(0, 80),
+            }))}
+            aspect={aspect}
+            title={output.video_title}
+            onComplete={(url) => {
+              toast({
+                title: "Video saved to Generated Videos",
+                description: "Open /videos to preview, download, or schedule distribution.",
+              });
+              void url;
+            }}
+          />
+        </FormSection>
+      ) : null}
+
 
       <FormSection title="What's the video?" description="Goal and topic shape every line below.">
         <div className="grid gap-4 sm:grid-cols-2">

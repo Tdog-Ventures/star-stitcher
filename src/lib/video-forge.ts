@@ -1350,15 +1350,41 @@ function collectSpeakabilityIssues(
  * Render engine routing. Forwarded to FacelessForge as `engine` and persisted
  * on `assets.render_engine` so Generated Videos can show which engine ran.
  */
-export type RenderEngine = "videoforge" | "lumina" | "neon";
+export type RenderEngine = "browser-open" | "videoforge" | "lumina" | "neon";
 
-export const RENDER_ENGINES: { value: RenderEngine; label: string; description: string }[] = [
-  { value: "videoforge", label: "Video Forge", description: "Default — fast canvas renderer" },
-  { value: "lumina", label: "Lumina Forge", description: "AI visuals (cinematic)" },
-  { value: "neon", label: "Neon Studio", description: "Thumbnail-style video" },
+export const RENDER_ENGINES: {
+  value: RenderEngine;
+  label: string;
+  description: string;
+  disabled?: boolean;
+}[] = [
+  {
+    value: "browser-open",
+    label: "Browser Open (Free)",
+    description: "Default — renders in your browser, no external service",
+  },
+  {
+    value: "videoforge",
+    label: "Video Forge — Pro (soon)",
+    description: "External renderer (FacelessForge). Coming soon.",
+    disabled: true,
+  },
+  {
+    value: "lumina",
+    label: "Lumina Forge — Pro (soon)",
+    description: "AI cinematic visuals. Coming soon.",
+    disabled: true,
+  },
+  {
+    value: "neon",
+    label: "Neon Studio — Pro (soon)",
+    description: "Thumbnail-style video. Coming soon.",
+    disabled: true,
+  },
 ];
 
 export const RENDER_ENGINE_LABEL: Record<RenderEngine, string> = {
+  "browser-open": "Browser Open",
   videoforge: "Video Forge",
   lumina: "Lumina Forge",
   neon: "Neon Studio",
