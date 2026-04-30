@@ -285,10 +285,18 @@ export default function OpenSourceVideoRenderer({
     setErrorMsg(null);
     setVideoUrl(null);
 
-    const scenes =
+    // Always derive a unified keyword set from the full script and rotate it
+    // across scenes — overrides any per-scene keywords from the parent so the
+    // resulting clips share a single visual subject.
+    const unifiedKeywords = buildUnifiedKeywords(script || (providedScenes ?? []).map((s) => s.text).join(" "));
+    const baseScenes =
       providedScenes && providedScenes.length > 0
         ? providedScenes
         : buildFallbackScenes();
+    const scenes: Scene[] = baseScenes.map((s, i) => ({
+      ...s,
+      keyword: unifiedKeywords[i % unifiedKeywords.length],
+    }));
 
     // Cancel any in-flight TTS.
     if (typeof speechSynthesis !== "undefined") {
