@@ -352,11 +352,16 @@ export default function OpenSourceVideoRenderer({
     setProgress(2);
     setErrorMsg(null);
     setVideoUrl(null);
+    setDebugLogs([]);
+    renderStartRef.current = performance.now();
+    log("info", "init", `Aspect ${aspect} · canvas ${width}×${height}`);
+    log("info", "init", `User: ${user.id.slice(0, 8)}…`);
 
     // Always derive a unified keyword set from the full script and rotate it
     // across scenes — overrides any per-scene keywords from the parent so the
     // resulting clips share a single visual subject.
     const unifiedKeywords = buildUnifiedKeywords(script || (providedScenes ?? []).map((s) => s.text).join(" "));
+    log("info", "keywords", `Unified set [${unifiedKeywords.length}]: ${unifiedKeywords.join(" | ")}`);
     const baseScenes =
       providedScenes && providedScenes.length > 0
         ? providedScenes
@@ -365,10 +370,23 @@ export default function OpenSourceVideoRenderer({
       ...s,
       keyword: unifiedKeywords[i % unifiedKeywords.length],
     }));
+    const targetDuration = scenes.reduce((acc, s) => acc + s.duration, 0);
+    log(
+      "info",
+      "scenes",
+      `${scenes.length} scenes · target duration ${targetDuration.toFixed(1)}s`,
+    );
 
     // Cancel any in-flight TTS.
     if (typeof speechSynthesis !== "undefined") {
       speechSynthesis.cancel();
+      log(
+        "info",
+        "tts",
+        `speechSynthesis available · ${speechSynthesis.getVoices().length} voices`,
+      );
+    } else {
+      log("warn", "tts", "speechSynthesis API not available in this browser");
     }
 
     const canvas = document.createElement("canvas");
@@ -378,6 +396,7 @@ export default function OpenSourceVideoRenderer({
     if (!ctx) {
       setStatus("failed");
       setErrorMsg("Canvas not supported in this browser");
+      log("error", "canvas", "getContext('2d') returned null");
       return;
     }
 
@@ -400,18 +419,24 @@ export default function OpenSourceVideoRenderer({
     if (!mimeType) {
       setStatus("failed");
       setErrorMsg("Your browser doesn't support MediaRecorder webm output. Try Chrome.");
+      log("error", "recorder", "No supported webm MIME type found");
       return;
     }
+    log("info", "recorder", `MIME: ${mimeType}`);
 
     const recorder = new MediaRecorder(stream, { mimeType });
     const chunks: Blob[] = [];
     recorder.ondataavailable = (e) => {
       if (e.data.size > 0) chunks.push(e.data);
     };
+    recorder.onerror = (e) => {
+      log("error", "recorder", `MediaRecorder error: ${(e as ErrorEvent).message ?? "unknown"}`);
+    };
 
     setStatus("rendering");
     setProgress(8);
     recorder.start(250);
+    log("info", "recorder", "Recording started (timeslice 250ms)");
 
     // Animation loop driven by rAF; we switch the active video as scenes change.
     let activeVideo: HTMLVideoElement | null = null;
