@@ -58,6 +58,46 @@ export default function OpenSourceVideoRenderer({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const cancelRef = useRef(false);
 
+  // ---- Debug overlay state -------------------------------------------------
+  type LogLevel = "info" | "warn" | "error" | "success";
+  interface DebugLog {
+    t: number; // ms since render start
+    level: LogLevel;
+    tag: string;
+    msg: string;
+  }
+  const [debugLogs, setDebugLogs] = useState<DebugLog[]>([]);
+  const [showDebug, setShowDebug] = useState(true);
+  const renderStartRef = useRef<number>(0);
+
+  const log = useCallback((level: LogLevel, tag: string, msg: string) => {
+    const entry: DebugLog = {
+      t: renderStartRef.current ? performance.now() - renderStartRef.current : 0,
+      level,
+      tag,
+      msg,
+    };
+    // Mirror to console for full stack traces.
+    const prefix = `[video-forge:${tag}]`;
+    if (level === "error") console.error(prefix, msg);
+    else if (level === "warn") console.warn(prefix, msg);
+    else console.log(prefix, msg);
+    setDebugLogs((prev) => [...prev, entry]);
+  }, []);
+
+  const clearLogs = () => setDebugLogs([]);
+  const copyLogs = async () => {
+    const text = debugLogs
+      .map((l) => `[${(l.t / 1000).toFixed(2)}s] ${l.level.toUpperCase()} ${l.tag}: ${l.msg}`)
+      .join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("Debug logs copied");
+    } catch {
+      toast.error("Copy failed");
+    }
+  };
+
   const isPortrait = aspect === "9:16";
   const width = isPortrait ? 1080 : 1920;
   const height = isPortrait ? 1920 : 1080;
