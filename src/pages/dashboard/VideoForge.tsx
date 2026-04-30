@@ -475,15 +475,6 @@ const VideoForge = () => {
         </FormSection>
       ) : null}
 
-      {/* Original placeholder (kept logic identical to before for non-browser-open engines). */}
-      {false ? (
-        <div>
-          <p className="font-medium">Manual-first, instant output.</p>
-          <p className="mt-1 text-muted-foreground">
-            Fill the form, hit Generate. The plan is deterministic and editable in the asset view. We then queue an MP4 render with FacelessForge automatically and take you to Generated Videos to watch progress.
-          </p>
-        </div>
-      )}
 
       <FormSection title="What's the video?" description="Goal and topic shape every line below.">
         <div className="grid gap-4 sm:grid-cols-2">
