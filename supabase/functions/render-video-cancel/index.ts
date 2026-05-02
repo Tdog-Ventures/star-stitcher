@@ -5,6 +5,16 @@
 // asset. Handles `already_terminal` by reflecting the upstream status.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import {
+  facelessForgeInvalidBaseUrlResponse,
+  facelessForgeNotConfiguredResponse,
+  facelessForgeUrl,
+  fetchFacelessForgeUpstream,
+  isAbortError,
+  jsonResponse,
+  readFacelessForgeCredentials,
+  safeSnippet,
+} from "../_shared/facelessforge.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,50 +36,15 @@ function normaliseStatus(raw: unknown): "queued" | "running" | "completed" | "fa
   return "queued";
 }
 
-function facelessForgeUrl(rawBaseUrl: string, endpoint: string): string | null {
-  const stripped = rawBaseUrl
-    .trim()
-    .replace(/^FACELESSFORGE_BASE_URL\s*=\s*/, "")
-    .replace(/^['"]|['"]$/g, "")
-    .trim();
-  try {
-    const url = new URL(stripped);
-    let path = url.pathname.replace(/\/$/, "");
-    for (const suffix of [
-      "/api/external/render-video/cancel",
-      "/api/external/render-video-status",
-      "/api/external/render-video",
-      "/api/external",
-    ]) {
-      if (path.endsWith(suffix)) {
-        path = path.slice(0, -suffix.length);
-        break;
-      }
-    }
-    url.pathname = path || "/";
-    url.search = "";
-    url.hash = "";
-    return `${url.toString().replace(/\/$/, "")}${endpoint}`;
-  } catch {
-    return null;
-  }
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse(corsHeaders, 405, { error: "Method not allowed", code: "METHOD_NOT_ALLOWED" });
   }
 
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse(corsHeaders, 401, { error: "Unauthorized", code: "UNAUTHORIZED" });
   }
 
   const supabase = createClient(
@@ -81,10 +56,7 @@ Deno.serve(async (req) => {
   const token = authHeader.replace("Bearer ", "");
   const { data: userData, error: userErr } = await supabase.auth.getUser(token);
   if (userErr || !userData?.user) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse(corsHeaders, 401, { error: "Unauthorized", code: "UNAUTHORIZED" });
   }
   const userId = userData.user.id;
 
@@ -92,25 +64,16 @@ Deno.serve(async (req) => {
   try {
     body = await req.json();
   } catch {
-    return new Response(JSON.stringify({ error: "Invalid JSON" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse(corsHeaders, 400, { error: "Invalid JSON", code: "INVALID_JSON" });
   }
 
   const jobId = String(body.job_id ?? "");
   const assetId = String(body.asset_id ?? "");
   if (!jobId) {
-    return new Response(JSON.stringify({ error: "job_id required" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse(corsHeaders, 400, { error: "job_id required", code: "VALIDATION_ERROR" });
   }
   if (!isUuid(assetId)) {
-    return new Response(JSON.stringify({ error: "asset_id must be a uuid" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse(corsHeaders, 400, { error: "asset_id must be a uuid", code: "VALIDATION_ERROR" });
   }
 
   const { data: asset, error: assetErr } = await supabase
@@ -120,65 +83,73 @@ Deno.serve(async (req) => {
     .maybeSingle();
 
   if (assetErr || !asset || asset.user_id !== userId) {
-    return new Response(JSON.stringify({ error: "Asset not found" }), {
-      status: 404,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse(corsHeaders, 404, { error: "Asset not found", code: "ASSET_NOT_FOUND" });
   }
   if (asset.render_job_id !== jobId) {
-    return new Response(JSON.stringify({ error: "job_id does not match asset" }), {
-      status: 409,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse(corsHeaders, 409, { error: "job_id does not match asset", code: "JOB_MISMATCH" });
   }
 
-  const apiKey = Deno.env.get("FACELESSFORGE_API_KEY") ?? "";
-  const baseUrl = Deno.env.get("FACELESSFORGE_BASE_URL") ?? "";
-  if (!apiKey || !baseUrl) {
-    return new Response(
-      JSON.stringify({ error: "FacelessForge is not configured" }),
-      { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+  const creds = readFacelessForgeCredentials();
+  if (!creds.ok) {
+    return facelessForgeNotConfiguredResponse(corsHeaders, creds.missing);
   }
+  const { apiKey, baseUrl } = creds;
+
   const cancelUrl = facelessForgeUrl(baseUrl, "/api/external/render-video/cancel");
   if (!cancelUrl) {
-    return new Response(
-      JSON.stringify({ error: "FacelessForge base URL is invalid" }),
-      { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return facelessForgeInvalidBaseUrlResponse(corsHeaders);
   }
 
   let upstreamStatus: "queued" | "running" | "completed" | "failed" | "cancelled" = "cancelled";
   let alreadyTerminal = false;
   let videoUrl: string | null = null;
   try {
-    const upstream = await fetch(
-      cancelUrl,
-      {
+    let upstream: Response;
+    try {
+      upstream = await fetchFacelessForgeUpstream(cancelUrl, {
         method: "POST",
         headers: {
           "X-FacelessForge-Key": apiKey,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ job_id: jobId }),
-      },
-    );
+      });
+    } catch (e) {
+      const snippet = safeSnippet(e instanceof Error ? e.message : String(e), 160);
+      console.error("[render-video-cancel] fetch error", cancelUrl, snippet);
+      if (isAbortError(e)) {
+        return jsonResponse(corsHeaders, 502, {
+          error: "FacelessForge cancel request timed out.",
+          code: "FACELESSFORGE_TIMEOUT",
+        });
+      }
+      return jsonResponse(corsHeaders, 502, {
+        error: "Could not reach FacelessForge.",
+        code: "FACELESSFORGE_NETWORK_ERROR",
+        details: { last_snippet: snippet },
+      });
+    }
+
     const text = await upstream.text();
     if (!upstream.ok) {
-      console.error("[render-video-cancel] upstream error", upstream.status, text);
-      return new Response(
-        JSON.stringify({ error: `FacelessForge error [${upstream.status}]: ${text}` }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      const lastSnippet = safeSnippet(text, 280);
+      console.error("[render-video-cancel] upstream error", upstream.status, lastSnippet);
+      return jsonResponse(corsHeaders, 502, {
+        error: "FacelessForge rejected the cancel request.",
+        code: "FACELESSFORGE_UPSTREAM_ERROR",
+        details: { upstream_http_status: upstream.status, last_snippet: lastSnippet },
+      });
     }
+
     let data: Record<string, unknown> = {};
     try {
       data = text ? JSON.parse(text) : {};
     } catch {
-      return new Response(
-        JSON.stringify({ error: "FacelessForge returned non-JSON response" }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      console.error("[render-video-cancel] non-JSON body", safeSnippet(text, 400));
+      return jsonResponse(corsHeaders, 502, {
+        error: "FacelessForge returned a non-JSON response.",
+        code: "FACELESSFORGE_INVALID_RESPONSE",
+      });
     }
     alreadyTerminal = data.already_terminal === true;
     upstreamStatus = normaliseStatus(data.status ?? data.render_status ?? "cancelled");
@@ -188,11 +159,11 @@ Deno.serve(async (req) => {
       ? data.rendered_video_url
       : null;
   } catch (e) {
-    console.error("[render-video-cancel] fetch failed", e);
-    return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Upstream call failed" }),
-      { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    console.error("[render-video-cancel] unexpected", e);
+    return jsonResponse(corsHeaders, 502, {
+      error: "Unexpected error while contacting FacelessForge.",
+      code: "FACELESSFORGE_UNEXPECTED",
+    });
   }
 
   // Persist final state. If upstream says already_terminal, reflect upstream status.

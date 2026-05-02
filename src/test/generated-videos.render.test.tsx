@@ -183,6 +183,7 @@ describe("GeneratedVideos — FacelessForge render integration (live)", () => {
       { body: Record<string, unknown> },
     ];
     expect(fnName).toBe("render-video");
+    expect(opts.headers).toMatchObject({ "Content-Type": "application/json" });
     expect(opts.body).toMatchObject({
       asset_id: ASSET_ID,
       title: h.sampleAsset.title,

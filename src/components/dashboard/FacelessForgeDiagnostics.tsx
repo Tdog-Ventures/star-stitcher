@@ -3,6 +3,7 @@ import { CheckCircle2, RefreshCw, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
+import { messageFromFunctionsInvoke } from "@/lib/facelessforge-env";
 
 interface DiagnosticsResponse {
   ok: boolean;
@@ -38,7 +39,10 @@ export const FacelessForgeDiagnostics = () => {
         "facelessforge-diagnostics",
         { method: "GET" },
       );
-      if (error) throw error;
+      if (error) {
+        setError(messageFromFunctionsInvoke(data, error));
+        return;
+      }
       setData(data ?? null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load diagnostics");

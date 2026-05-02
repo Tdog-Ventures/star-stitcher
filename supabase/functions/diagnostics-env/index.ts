@@ -38,6 +38,15 @@ serve(async (req) => {
       message: openaiKey ? "OPENAI_API_KEY is set" : "OPENAI_API_KEY is not set",
     });
 
+    const ffApiKey = Deno.env.get("FACELESSFORGE_API_KEY");
+    checks.push({
+      name: "FacelessForge API Key",
+      status: ffApiKey ? "OK" : "FAIL",
+      message: ffApiKey
+        ? "FACELESSFORGE_API_KEY is set"
+        : "FACELESSFORGE_API_KEY is not set (required for render-video, render-video-status, render-video-cancel)",
+    });
+
     // 3. FacelessForge Base URL (THE IMPORTANT ONE)
     const base = Deno.env.get("FACELESSFORGE_BASE_URL");
     if (!base) {

@@ -31,6 +31,23 @@ async function suggestCorrectUrl(): Promise<string | null> {
   return null;
 }
 
+function checkFacelessForgeApiKey(): CheckResult {
+  const key = process.env.FACELESSFORGE_API_KEY;
+  if (!key) {
+    return {
+      name: "FacelessForge API Key",
+      status: "FAIL",
+      message:
+        "FACELESSFORGE_API_KEY is not set. Supabase Edge functions `render-video` / `render-video-status` / `render-video-cancel` cannot call upstream.",
+    };
+  }
+  return {
+    name: "FacelessForge API Key",
+    status: "OK",
+    message: "FACELESSFORGE_API_KEY is set (value not logged).",
+  };
+}
+
 async function checkFacelessForgeBaseUrl(): Promise<CheckResult> {
   const base = process.env.FACELESSFORGE_BASE_URL;
 
@@ -198,6 +215,7 @@ export default async function handler(
 
     checks.push(checkEnvironment());
     checks.push(checkOpenAIKey());
+    checks.push(checkFacelessForgeApiKey());
     checks.push(checkCallbackUrl());
     checks.push(checkStorageConfig());
     checks.push(await checkFacelessForgeBaseUrl());

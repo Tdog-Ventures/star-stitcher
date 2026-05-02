@@ -61,6 +61,9 @@ import {
   RENDER_ENGINE_LABEL,
   type RenderEngine,
 } from "@/lib/video-forge";
+import { messageFromFunctionsInvoke } from "@/lib/facelessforge-env";
+
+const FACELESSFORGE_JSON_HEADERS = { "Content-Type": "application/json" } as const;
 
 interface AssetRecord {
   id: string;
@@ -218,6 +221,7 @@ const GeneratedVideos = () => {
   // Per-row engine selector for the manual render flow. Defaults to videoforge.
   const [engineByAsset, setEngineByAsset] = useState<Record<string, RenderEngine>>({});
   const [tick, setTick] = useState(0); // re-render every second for fallback curve
+  const [statusPollError, setStatusPollError] = useState<string | null>(null);
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = async () => {
@@ -340,8 +344,13 @@ const GeneratedVideos = () => {
         }
         const { data, error } = await supabase.functions.invoke("render-video-status", {
           body: { job_id: row.render_job_id, asset_id: row.id },
+          headers: { ...FACELESSFORGE_JSON_HEADERS },
         });
-        if (error) continue;
+        if (error) {
+          setStatusPollError(messageFromFunctionsInvoke(data, error));
+          continue;
+        }
+        setStatusPollError(null);
         const payload = (data ?? {}) as { status?: string; progress?: number | null };
         const status = payload.status;
         if (typeof payload.progress === "number") {
@@ -420,6 +429,7 @@ const GeneratedVideos = () => {
 
     const { data, error } = await supabase.functions.invoke("render-video", {
       body,
+      headers: { ...FACELESSFORGE_JSON_HEADERS },
     });
 
     setRenderingNow((s) => {
@@ -431,7 +441,7 @@ const GeneratedVideos = () => {
     if (error) {
       toast({
         title: "Render request failed",
-        description: error.message,
+        description: messageFromFunctionsInvoke(data, error),
         variant: "destructive",
       });
       return;
@@ -472,6 +482,7 @@ const GeneratedVideos = () => {
 
     const { data, error } = await supabase.functions.invoke("render-video-cancel", {
       body: { job_id: rec.render_job_id, asset_id: rec.id },
+      headers: { ...FACELESSFORGE_JSON_HEADERS },
     });
 
     setCancellingNow((s) => {
@@ -483,7 +494,7 @@ const GeneratedVideos = () => {
     if (error) {
       toast({
         title: "Cancel failed",
-        description: error.message,
+        description: messageFromFunctionsInvoke(data, error),
         variant: "destructive",
       });
       return;
@@ -640,6 +651,15 @@ const GeneratedVideos = () => {
         </div>
       ) : (
         <div className="grid gap-3" data-testid="video-grid">
+          {statusPollError ? (
+            <div
+              className="rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+              role="alert"
+              data-testid="render-status-poll-error"
+            >
+              {statusPollError}
+            </div>
+          ) : null}
           {rows.map((rec) => {
             const meta = extractMeta(rec.content);
             const badge = videoBadge(rec, tasks);

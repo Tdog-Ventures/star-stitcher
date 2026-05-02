@@ -1384,6 +1384,9 @@ export interface RenderVideoPayload {
  * Build the render-video request body from a Video Forge output + asset id.
  * Single source of truth — used by the manual render button on /videos and
  * the auto-render fired right after Generate on the Video Forge page.
+ *
+ * Upstream secrets for the `render-video` Edge function: see `FACELESSFORGE_REQUIRED_FOR_RENDER`
+ * in `src/lib/facelessforge-env.ts`.
  */
 export function buildRenderPayload(
   assetId: string,
