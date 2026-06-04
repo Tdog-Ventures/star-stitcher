@@ -212,11 +212,22 @@ Deno.serve(async (req) => {
       }
 
       const text = await resp.text();
+      const ct = resp.headers.get("content-type") ?? "";
       const snippet = safeSnippet(text, 400);
+      const looksHtml = ct.includes("text/html") || text.trimStart().startsWith("<");
       tried.push({ url, http_status: resp.status });
-      console.error("[render-video] upstream", url, "->", resp.status, snippet.slice(0, 320));
-
-      if (resp.status !== 404) {
+      console.error(
+        "[render-video] upstream",
+        url,
+        "->",
+        resp.status,
+        "ct:",
+        ct,
+        snippet.slice(0, 320),
+      );
+      // A 200 that returns HTML (preview shell, challenge page, etc.) is not
+      // a valid API response. Keep trying other known paths.
+      if (resp.status !== 404 && !looksHtml) {
         upstream = resp;
         lastText = text;
         usedUrl = url;
@@ -227,16 +238,20 @@ Deno.serve(async (req) => {
     }
 
     if (!upstream) {
-      const urlsTried = tried.map((t) => t.url).slice(0, 8);
-      const lastSnippet = safeSnippet(lastText, 200);
-      console.error("[render-video] all candidates 404", JSON.stringify({ urls_tried: urlsTried, lastSnippet }));
+      const urlsTried = tried.map((t) => `${t.url} [${t.http_status}]`).slice(0, 8);
+      const lastSnippet = safeSnippet(lastText, 300);
+      console.error(
+        "[render-video] no candidate url returned a usable JSON response",
+        JSON.stringify({ urls_tried: urlsTried, lastSnippet }),
+      );
       return jsonResponse(corsHeaders, 502, {
         error:
-          "No FacelessForge render endpoint accepted this request (only 404 responses). Check FACELESSFORGE_BASE_URL.",
-        code: "FACELESSFORGE_ALL_CANDIDATES_404",
+          `FacelessForge did not return a usable JSON API response on known paths. ` +
+          `Check FACELESSFORGE_BASE_URL (${baseUrl}).`,
+        code: "FACELESSFORGE_NO_USABLE_ENDPOINT",
         details: {
           urls_tried: urlsTried,
-          last_http_status: 404,
+          candidate_paths: candidatePaths,
           last_snippet: lastSnippet,
         },
       });
