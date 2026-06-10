@@ -3,11 +3,11 @@ import { seedAuth, stabilisePage, injectStableStyles } from "./utils/auth";
 import { ADMIN_ROUTES } from "./utils/admin-routes";
 
 test.describe("Admin · visual regression @desktop", () => {
-  // Visual diffing is meaningful on a fixed desktop viewport only.
-  test.skip(({ browserName }, testInfo) => {
-    return testInfo.project.name !== "desktop-chromium";
-  }, "Visual baselines pinned to desktop-chromium project");
+  test.beforeEach(({}, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop-chromium", "Visual baselines pinned to desktop-chromium project");
+  });
 
+  // Visual diffing is meaningful on a fixed desktop viewport only.
   test.beforeEach(async ({ context, page }) => {
     await seedAuth(context, "admin");
     await stabilisePage(context);

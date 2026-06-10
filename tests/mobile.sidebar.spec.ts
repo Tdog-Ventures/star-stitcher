@@ -8,7 +8,9 @@ import { ADMIN_ROUTES } from "./utils/admin-routes";
  * real browser pass that exercises the Radix portal, overlay, and scroll lock.
  */
 test.describe("Admin · mobile sheet sidebar @mobile", () => {
-  test.skip(({}, testInfo) => testInfo.project.name !== "mobile-chromium");
+  test.beforeEach(({}, testInfo) => {
+    test.skip(testInfo.project.name !== "mobile-chromium", "Mobile sidebar tests pinned to mobile-chromium project");
+  });
 
   test.beforeEach(async ({ context, page }) => {
     await seedAuth(context, "admin");
