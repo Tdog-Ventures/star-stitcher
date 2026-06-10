@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 type CheckStatus = "OK" | "WARN" | "FAIL";
 
@@ -23,9 +24,9 @@ export function DiagnosticsPanel() {
     setLoading(true);
     setError(null);
     try {
-      const r = await fetch("/api/diagnostics/env");
-      const json = (await r.json()) as EnvReport;
-      setReport(json);
+      const { data: json, error } = await supabase.functions.invoke("diagnostics-env");
+      if (error) throw error;
+      setReport(json as EnvReport);
     } catch (e: any) {
       setError(e.message || "Failed to run validation.");
     } finally {
