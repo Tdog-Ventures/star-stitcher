@@ -558,7 +558,7 @@ export default function OpenSourceVideoRenderer({
     log("info", "recorder", `Stopping recorder · elapsed ${elapsedRender.toFixed(2)}s`);
 
     // Stop recorder and wait for the final blob.
-    const blob: Blob = await new Promise((resolve) => {
+    const rawBlob: Blob = await new Promise((resolve) => {
       recorder.onstop = () => {
         resolve(new Blob(chunks, { type: mimeType }));
       };
@@ -571,6 +571,17 @@ export default function OpenSourceVideoRenderer({
         }
       }, 200);
     });
+
+    // Patch the webm header with the real duration. MediaRecorder omits the
+    // Duration element, which made players report ~1s. This injects the correct
+    // length so the saved file shows the full runtime everywhere.
+    let blob = rawBlob;
+    try {
+      blob = await fixWebmDuration(rawBlob, Math.round(totalMs), { logger: false });
+      log("success", "duration", `Patched webm header → ${(totalMs / 1000).toFixed(1)}s`);
+    } catch (e) {
+      log("warn", "duration", `Duration patch failed: ${(e as Error).message}`);
+    }
 
     log(
       "info",
