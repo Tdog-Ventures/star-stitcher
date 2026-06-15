@@ -51,6 +51,8 @@ const DistributionCalendar = lazy(() => import("./pages/dashboard/DistributionCa
 const Settings = lazy(() => import("./pages/dashboard/Settings"));
 const SettingsAccount = lazy(() => import("./pages/dashboard/SettingsAccount"));
 const SettingsWorkspace = lazy(() => import("./pages/dashboard/SettingsWorkspace"));
+const DiagnosticsPage = lazy(() => import("./pages/dashboard/Diagnostics"));
+const JobsPage = lazy(() => import("./pages/Jobs"));
 
 // Admin (Command Center) — lazy (heavy: performance board, command board)
 const CommandBoard = lazy(() => import("./pages/admin/CommandBoard"));
@@ -134,6 +136,8 @@ const App = () => (
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/settings/account" element={<SettingsAccount />} />
                   <Route path="/settings/workspace" element={<SettingsWorkspace />} />
+                  <Route path="/diagnostics" element={<DiagnosticsPage />} />
+                  <Route path="/jobs" element={<JobsPage />} />
                 </Route>
 
                 {/* Admin command center */}

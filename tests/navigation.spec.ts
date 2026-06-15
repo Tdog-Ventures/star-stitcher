@@ -3,7 +3,9 @@ import { seedAuth } from "./utils/auth";
 import { ADMIN_ROUTES } from "./utils/admin-routes";
 
 test.describe("Admin · navigation assertions @desktop", () => {
-  test.skip(({}, testInfo) => testInfo.project.name !== "desktop-chromium");
+  test.beforeEach(({}, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop-chromium", "Navigation tests pinned to desktop-chromium project");
+  });
 
   test.beforeEach(async ({ context, page }) => {
     await seedAuth(context, "admin");

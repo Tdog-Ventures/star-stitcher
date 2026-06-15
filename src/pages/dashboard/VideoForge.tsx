@@ -47,9 +47,11 @@ import {
   type VideoPlatform,
   type VideoTone,
 } from "@/lib/video-forge";
+import { messageFromFunctionsInvoke } from "@/lib/facelessforge-env";
 import { buildEnvelope } from "@/lib/engines/contracts";
 
 type AspectRatio = "9:16" | "16:9";
+const FACELESSFORGE_JSON_HEADERS = { "Content-Type": "application/json" } as const;
 
 const EMPTY: VideoForgeInput = {
   video_goal: "marketing",
@@ -228,13 +230,13 @@ const VideoForge = () => {
     const renderBody = buildRenderPayload(asset.id, result, renderEngine);
     const { data: renderData, error: renderError } = await supabase.functions.invoke(
       "render-video",
-      { body: renderBody },
+      { body: renderBody, headers: { ...FACELESSFORGE_JSON_HEADERS } },
     );
 
     if (renderError) {
       toast({
         title: "Script saved — render couldn't start",
-        description: `${renderError.message}. Open it from Generated Videos to retry.`,
+        description: `${messageFromFunctionsInvoke(renderData, renderError)} Open it from Generated Videos to retry.`,
         variant: "destructive",
       });
       navigate("/videos");
