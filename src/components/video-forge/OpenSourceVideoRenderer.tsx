@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/providers/AuthProvider";
+import fixWebmDuration from "fix-webm-duration";
 
 interface Scene {
   text: string;
@@ -433,94 +434,122 @@ export default function OpenSourceVideoRenderer({
       log("error", "recorder", `MediaRecorder error: ${(e as ErrorEvent).message ?? "unknown"}`);
     };
 
+    // ---- Preload ALL clips before recording -------------------------------
+    // Loading clips mid-record caused blank frames and premature stops. We now
+    // fetch every scene's clip up front (in parallel) so the recording loop
+    // never waits on the network.
+    setProgress(5);
+    log("info", "preload", `Fetching ${scenes.length} clips in parallel…`);
+    const videos: HTMLVideoElement[] = await Promise.all(
+      scenes.map((s, i) => fetchStockClip(s.keyword, i)),
+    );
+    if (cancelRef.current) {
+      log("warn", "preload", "Cancelled during preload");
+      return;
+    }
+    log("success", "preload", `All ${videos.length} clips ready`);
+
+    // Verify the canvas won't be tainted. A tainted canvas makes MediaRecorder
+    // throw SecurityError and emit a broken/short blob (the old 1.12s bug). Any
+    // clip that taints is swapped for the CORS-safe fallback.
+    for (let i = 0; i < videos.length; i++) {
+      try {
+        ctx.drawImage(videos[i], 0, 0, 2, 2);
+        ctx.getImageData(0, 0, 1, 1); // throws if tainted
+      } catch {
+        log("error", `scene-${i + 1}`, "Clip taints canvas (no CORS) — using fallback");
+        try {
+          videos[i].pause();
+          videos[i].src = FALLBACK_VIDEO;
+          videos[i].load();
+        } catch {
+          /* ignore */
+        }
+        await new Promise<void>((resolve) => {
+          videos[i].addEventListener("loadeddata", () => resolve(), { once: true });
+          videos[i].addEventListener("error", () => resolve(), { once: true });
+          setTimeout(resolve, 4000);
+        });
+        try {
+          await videos[i].play();
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+    // Reset canvas to black after the taint probe.
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
     setStatus("rendering");
     setProgress(8);
-    recorder.start(250);
-    log("info", "recorder", "Recording started (timeslice 250ms)");
+    recorder.start(100);
+    log("info", "recorder", "Recording started (timeslice 100ms)");
 
-    // Animation loop driven by rAF; we switch the active video as scenes change.
-    let activeVideo: HTMLVideoElement | null = null;
-    let sceneStart = performance.now();
-    let currentScene: Scene | null = null;
-
-    const drawLoop = () => {
-      if (cancelRef.current) return;
-      if (!activeVideo || !currentScene) {
-        requestAnimationFrame(drawLoop);
-        return;
+    // Queue narration up front for live preview. NOTE: browser speechSynthesis
+    // CANNOT be captured into the .webm — the saved file is silent until
+    // server-side TTS (ElevenLabs) is wired up in the next iteration.
+    if (typeof speechSynthesis !== "undefined") {
+      for (const s of scenes) {
+        if (!s.text) continue;
+        const u = new SpeechSynthesisUtterance(s.text);
+        u.rate = 0.95;
+        speechSynthesis.speak(u);
       }
-      const t = Math.min(
-        (performance.now() - sceneStart) / (currentScene.duration * 1000),
-        1,
-      );
-      drawScene(ctx, activeVideo, currentScene.caption, t);
-      requestAnimationFrame(drawLoop);
-    };
-    requestAnimationFrame(drawLoop);
-
-    try {
-      for (let i = 0; i < scenes.length; i++) {
-        if (cancelRef.current) {
-          log("warn", "loop", `Cancelled before scene ${i + 1}`);
-          break;
-        }
-        const scene = scenes[i];
-        log(
-          "info",
-          `scene-${i + 1}`,
-          `Start (${scene.duration}s) caption="${scene.caption.slice(0, 40)}"`,
-        );
-
-        const videoEl = await fetchStockClip(scene.keyword, i);
-        // Detach previous video element from playback.
-        if (activeVideo && activeVideo !== videoEl) {
-          try {
-            activeVideo.pause();
-            activeVideo.src = "";
-            activeVideo.load();
-          } catch {
-            /* ignore */
-          }
-        }
-        activeVideo = videoEl;
-        currentScene = scene;
-        sceneStart = performance.now();
-
-        // Speak narration for this scene (parallel to the video frames).
-        if (typeof speechSynthesis !== "undefined" && scene.text) {
-          const u = new SpeechSynthesisUtterance(scene.text);
-          u.rate = 0.95;
-          u.pitch = 1.0;
-          u.volume = 1.0;
-          u.onstart = () => log("info", `tts-${i + 1}`, "TTS started");
-          u.onend = () =>
-            log("info", `tts-${i + 1}`, "TTS ended");
-          u.onerror = (ev) =>
-            log("error", `tts-${i + 1}`, `TTS error: ${ev.error ?? "unknown"}`);
-          // Don't await — we time the scene by duration, not by TTS finishing.
-          speechSynthesis.speak(u);
-          log(
-            "info",
-            `tts-${i + 1}`,
-            `Queued utterance (${scene.text.length} chars) — note: cannot be captured into .webm`,
-          );
-        }
-
-        // Hold this scene for its duration.
-        await new Promise<void>((resolve) =>
-          setTimeout(resolve, scene.duration * 1000),
-        );
-
-        // Progress: 10% setup → 85% render → 100% upload.
-        const sceneProgress = 10 + Math.round(((i + 1) / scenes.length) * 75);
-        setProgress(sceneProgress);
-        log("success", `scene-${i + 1}`, `Done · progress ${sceneProgress}%`);
-      }
-    } catch (e) {
-      log("error", "loop", `Scene loop threw: ${(e as Error).message}`);
+      log("info", "tts", "Queued narration (preview only — not in saved file)");
     }
 
-    cancelRef.current = true; // stops drawLoop
+    // ---- Timed render loop -------------------------------------------------
+    // One continuous loop over the FULL target duration. The active clip is
+    // chosen by elapsed time and the Ken Burns zoom changes every frame so the
+    // captureStream always emits fresh frames (prevents stalled/short output).
+    const renderLoopStart = performance.now();
+    const totalMs = targetDuration * 1000;
+    const bounds: { start: number; end: number }[] = [];
+    let acc = 0;
+    for (const s of scenes) {
+      bounds.push({ start: acc, end: acc + s.duration * 1000 });
+      acc += s.duration * 1000;
+    }
+
+    await new Promise<void>((resolve) => {
+      const step = () => {
+        if (cancelRef.current) {
+          resolve();
+          return;
+        }
+        const elapsed = performance.now() - renderLoopStart;
+        if (elapsed >= totalMs) {
+          resolve();
+          return;
+        }
+        let idx = bounds.findIndex((b) => elapsed >= b.start && elapsed < b.end);
+        if (idx < 0) idx = scenes.length - 1;
+        const b = bounds[idx];
+        const t = Math.min((elapsed - b.start) / (b.end - b.start), 1);
+        try {
+          drawScene(ctx, videos[idx], scenes[idx].caption, t);
+        } catch (e) {
+          log("error", "loop", `draw failed: ${(e as Error).message}`);
+        }
+        setProgress(8 + Math.round((elapsed / totalMs) * 77));
+        requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    });
+
+    log("success", "loop", `Render loop complete (~${targetDuration.toFixed(1)}s)`);
+
+    // Cleanup video elements.
+    for (const v of videos) {
+      try {
+        v.pause();
+        v.src = "";
+        v.load();
+      } catch {
+        /* ignore */
+      }
+    }
     if (typeof speechSynthesis !== "undefined") {
       speechSynthesis.cancel();
     }
@@ -529,7 +558,7 @@ export default function OpenSourceVideoRenderer({
     log("info", "recorder", `Stopping recorder · elapsed ${elapsedRender.toFixed(2)}s`);
 
     // Stop recorder and wait for the final blob.
-    const blob: Blob = await new Promise((resolve) => {
+    const rawBlob: Blob = await new Promise((resolve) => {
       recorder.onstop = () => {
         resolve(new Blob(chunks, { type: mimeType }));
       };
@@ -542,6 +571,17 @@ export default function OpenSourceVideoRenderer({
         }
       }, 200);
     });
+
+    // Patch the webm header with the real duration. MediaRecorder omits the
+    // Duration element, which made players report ~1s. This injects the correct
+    // length so the saved file shows the full runtime everywhere.
+    let blob = rawBlob;
+    try {
+      blob = await fixWebmDuration(rawBlob, Math.round(totalMs), { logger: false });
+      log("success", "duration", `Patched webm header → ${(totalMs / 1000).toFixed(1)}s`);
+    } catch (e) {
+      log("warn", "duration", `Duration patch failed: ${(e as Error).message}`);
+    }
 
     log(
       "info",
