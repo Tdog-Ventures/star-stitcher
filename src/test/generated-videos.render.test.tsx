@@ -180,7 +180,7 @@ describe("GeneratedVideos — FacelessForge render integration (live)", () => {
     await waitFor(() => expect(h.invokeMock).toHaveBeenCalled());
     const [fnName, opts] = h.invokeMock.mock.calls[0] as [
       string,
-      { body: Record<string, unknown> },
+      { body: Record<string, unknown>; headers?: Record<string, string> },
     ];
     expect(fnName).toBe("render-video");
     expect(opts.headers).toMatchObject({ "Content-Type": "application/json" });
